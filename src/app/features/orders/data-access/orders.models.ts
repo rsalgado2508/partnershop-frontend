@@ -4,6 +4,7 @@ export interface OrdersListQuery {
   estatus: string;
   busqueda: string;
   plataforma: string;
+  rangoFechaReporte: string;
 }
 
 export interface OrdersListResponse {

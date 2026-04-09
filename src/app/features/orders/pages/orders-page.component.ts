@@ -33,6 +33,7 @@ type FiltersForm = FormGroup<{
   busqueda: FormControl<string>;
   estatus: FormControl<string>;
   plataforma: FormControl<string>;
+  rangoFechaReporte: FormControl<string>;
   limit: FormControl<string>;
 }>;
 
@@ -42,6 +43,7 @@ const DEFAULT_QUERY: OrdersListQuery = {
   busqueda: '',
   estatus: '',
   plataforma: '',
+  rangoFechaReporte: '',
 };
 
 @Component({
@@ -104,7 +106,7 @@ const DEFAULT_QUERY: OrdersListQuery = {
       </section>
 
       <form class="ps-filter-bar" [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
-        <div class="grid gap-4 xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_180px_auto_auto]">
+        <div class="grid gap-4 xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_240px_180px_auto_auto]">
           <ps-input
             label="Búsqueda"
             placeholder="Número de orden, orden tienda o guía"
@@ -127,6 +129,14 @@ const DEFAULT_QUERY: OrdersListQuery = {
             icon="box"
             formControlName="plataforma"
             hint="Filtro directo por plataforma."
+          />
+
+          <ps-select
+            label="Rango fecha reporte"
+            icon="calendar"
+            formControlName="rangoFechaReporte"
+            [options]="reportDateRangeOptions"
+            hint="Filtro agrupado por antiguedad del reporte."
           />
 
           <ps-select
@@ -208,7 +218,7 @@ const DEFAULT_QUERY: OrdersListQuery = {
               <div class="mt-6">
                 <ps-empty-state
                   title="No encontramos órdenes con los filtros actuales"
-                  description="Ajusta búsqueda, estatus o plataforma para volver a consultar el backend."
+                  description="Ajusta búsqueda, estatus, plataforma o rango de fecha para volver a consultar el backend."
                 >
                   <ps-button type="button" variant="secondary" (click)="clearFilters()">
                     Limpiar filtros
@@ -343,6 +353,13 @@ export class OrdersPageComponent {
     { label: '27 · Novedad', value: '27' },
     { label: '28 · Cancelada', value: '28' },
   ];
+  protected readonly reportDateRangeOptions: SelectOption[] = [
+    { label: 'Todos', value: '' },
+    { label: 'Últimos 7 días', value: 'ultimos_7_dias' },
+    { label: 'Entre 7 y 15 días', value: 'entre_7_y_15_dias' },
+    { label: 'Entre 15 y 20 días', value: 'entre_15_y_20_dias' },
+    { label: 'Más de 20 días', value: 'mas_de_20_dias' },
+  ];
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -353,6 +370,7 @@ export class OrdersPageComponent {
     busqueda: new FormControl('', { nonNullable: true }),
     estatus: new FormControl('', { nonNullable: true }),
     plataforma: new FormControl('', { nonNullable: true }),
+    rangoFechaReporte: new FormControl('', { nonNullable: true }),
     limit: new FormControl(String(DEFAULT_QUERY.limit), { nonNullable: true }),
   });
 
@@ -365,6 +383,7 @@ export class OrdersPageComponent {
           busqueda: query.busqueda,
           estatus: query.estatus,
           plataforma: query.plataforma,
+          rangoFechaReporte: query.rangoFechaReporte,
           limit: String(query.limit),
         },
         { emitEvent: false },
@@ -427,6 +446,7 @@ export class OrdersPageComponent {
         busqueda: formValue.busqueda.trim(),
         estatus: formValue.estatus.trim(),
         plataforma: formValue.plataforma.trim(),
+        rangoFechaReporte: formValue.rangoFechaReporte.trim(),
       }),
     });
   }
@@ -437,6 +457,7 @@ export class OrdersPageComponent {
         busqueda: '',
         estatus: '',
         plataforma: '',
+        rangoFechaReporte: '',
         limit: String(DEFAULT_QUERY.limit),
       },
       { emitEvent: false },
@@ -549,6 +570,7 @@ export class OrdersPageComponent {
       estatus: params.get('estatus')?.trim() ?? '',
       busqueda: params.get('busqueda')?.trim() ?? '',
       plataforma: params.get('plataforma')?.trim() ?? '',
+      rangoFechaReporte: params.get('rangoFechaReporte')?.trim() ?? '',
     };
   }
 
@@ -559,6 +581,7 @@ export class OrdersPageComponent {
       estatus: query.estatus || null,
       busqueda: query.busqueda || null,
       plataforma: query.plataforma || null,
+      rangoFechaReporte: query.rangoFechaReporte || null,
     };
   }
 }

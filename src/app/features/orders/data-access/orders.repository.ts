@@ -30,6 +30,10 @@ export class OrdersRepository {
       params = params.set('plataforma', query.plataforma);
     }
 
+    if (query.rangoFechaReporte) {
+      params = params.set('rangoFechaReporte', query.rangoFechaReporte);
+    }
+
     return this.http
       .get<OrdersApiEnvelope>(`${this.apiBaseUrl}/ordenes`, { params })
       .pipe(map(mapOrdersResponse));

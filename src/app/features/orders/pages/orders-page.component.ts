@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BadgeComponent } from '@shared/ui/badge/badge.component';
 import { ButtonComponent } from '@shared/ui/button/button.component';
@@ -21,8 +22,12 @@ import {
   switchMap,
   tap,
 } from 'rxjs';
+import {
+  CreateNovedadDrawerComponent,
+  OrderNovedadDrawerData,
+} from '../components/create-novedad-drawer.component';
 import { OrdersRepository } from '../data-access/orders.repository';
-import { OrdersListQuery, OrdersListResponse } from '../data-access/orders.models';
+import { OrderRow, OrdersListQuery, OrdersListResponse } from '../data-access/orders.models';
 
 type OrdersViewState =
   | { status: 'loading' }
@@ -68,17 +73,17 @@ const DEFAULT_QUERY: OrdersListQuery = {
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div class="max-w-3xl">
             <div class="flex flex-wrap items-center gap-2">
-              <ps-badge tone="brand">Órdenes reales</ps-badge>
-              <ps-badge tone="mint">Backend NestJS</ps-badge>
+              <ps-badge tone="brand">Listado de Órdenes</ps-badge>
+              <!--ps-badge tone="mint">Backend NestJS</ps-badge-->
             </div>
 
             <h2 class="mt-5 text-3xl font-extrabold tracking-[-0.04em] text-ink-950 md:text-[2.8rem]">
-              Listado operativo conectado a <code>/api/ordenes</code>
+              Órdenes PartnerShop <!--code>/api/ordenes</code-->
             </h2>
 
             <p class="mt-4 max-w-2xl text-sm leading-7 text-ink-600">
-              Esta pantalla consume el endpoint real, desacopla la respuesta del backend mediante un
-              mapper y mantiene filtros, búsqueda y paginación sincronizados con la URL.
+              Puedes consultar y filtrar las órdenes usando los controles de búsqueda, estatus, 
+              plataforma y rango de fecha de reporte. Has clic en Aplicar filtros para consultar.
             </p>
           </div>
 
@@ -263,8 +268,20 @@ const DEFAULT_QUERY: OrdersListQuery = {
                           <td>{{ displayValue(row.transportadoraNombre) }}</td>
                           <td>
                             <div class="flex flex-wrap gap-2">
-                              <ps-button size="sm" variant="ghost" type="button">Ver</ps-button>
-                              <ps-button size="sm" variant="secondary" type="button">
+                              <ps-button
+                                size="sm"
+                                variant="ghost"
+                                type="button"
+                                (click)="openOrderNovedadDrawer(row, 'history')"
+                              >
+                                Ver
+                              </ps-button>
+                              <ps-button
+                                size="sm"
+                                variant="secondary"
+                                type="button"
+                                (click)="openOrderNovedadDrawer(row, 'create')"
+                              >
                                 Registrar novedad
                               </ps-button>
                             </div>
@@ -363,6 +380,8 @@ export class OrdersPageComponent {
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
   private readonly ordersRepository = inject(OrdersRepository);
   private readonly reload$ = new Subject<void>();
 
@@ -482,6 +501,37 @@ export class OrdersPageComponent {
 
   protected retry(): void {
     this.reload$.next();
+  }
+
+  protected openOrderNovedadDrawer(order: OrderRow, initialView: 'create' | 'history'): void {
+    const data: OrderNovedadDrawerData = {
+      order,
+      initialView,
+    };
+
+    this.dialog
+      .open(CreateNovedadDrawerComponent, {
+        data,
+        autoFocus: false,
+        restoreFocus: true,
+        closeOnNavigation: false,
+        hasBackdrop: true,
+        disableClose: false,
+        width: 'min(560px, 100vw)',
+        maxWidth: '100vw',
+        height: '100vh',
+        maxHeight: '100vh',
+        position: { right: '0' },
+        panelClass: 'ps-drawer-dialog',
+        backdropClass: 'ps-drawer-backdrop',
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result?.created) {
+          this.retry();
+        }
+      });
   }
 
   protected visiblePages(): number[] {

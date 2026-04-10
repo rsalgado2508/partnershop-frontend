@@ -285,4 +285,21 @@
   .ps-table-placeholder {
     @apply text-ink-400;
   }
+
+  .ps-drawer-backdrop {
+    background: rgba(15, 23, 40, 0.34);
+    backdrop-filter: blur(7px);
+  }
+
+  .ps-drawer-dialog .mat-mdc-dialog-container {
+    padding: 0;
+  }
+
+  .ps-drawer-dialog .mat-mdc-dialog-surface,
+  .ps-drawer-dialog .mdc-dialog__surface {
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: hidden;
+  }
 }

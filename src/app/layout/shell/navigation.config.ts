@@ -9,20 +9,11 @@ export const SHELL_NAVIGATION: NavigationItem[] = [
     route: '/dashboard',
   },
   {
-    id: 'commerce',
-    label: 'Operación comercial',
-    description: 'Ventas y pedidos',
-    icon: 'box',
-    children: [
-      {
-        id: 'orders',
-        label: 'Pedidos',
-        description: 'Seguimiento operativo',
-        icon: 'cart',
-        route: '/orders',
-        badge: 'Activo',
-      },
-    ],
+    id: 'orders',
+    label: 'Pedidos',
+    description: 'Seguimiento operativo',
+    icon: 'cart',
+    route: '/orders'
   },
   {
     id: 'users',
@@ -39,10 +30,10 @@ export const SHELL_NAVIGATION: NavigationItem[] = [
     route: '/reports',
   },
   {
-    id: 'settings',
-    label: 'Configuración',
-    description: 'Configuración global',
-    icon: 'settings',
-    route: '/settings',
+    id: 'issuesCategories',
+    label: 'Categorías de problemas',
+    description: 'Gestión de categorías de incidencias',
+    icon: 'alert',
+    route: '/issues-categories',
   },
 ];

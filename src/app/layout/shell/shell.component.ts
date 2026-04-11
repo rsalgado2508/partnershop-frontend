@@ -3,10 +3,11 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { NavigationItem } from '@shared/models/navigation.model';
 import { map, startWith, filter } from 'rxjs';
-import { SHELL_NAVIGATION } from './navigation.config';
 import { LayoutShellService } from './layout-shell.service';
 import { ShellHeaderComponent } from './shell-header.component';
+import { ShellNavigationService } from './shell-navigation.service';
 import { ShellSidebarComponent } from './shell-sidebar.component';
 
 @Component({
@@ -19,7 +20,7 @@ import { ShellSidebarComponent } from './shell-sidebar.component';
         @if (!isMobile()) {
           <div class="sticky top-0 hidden h-screen shrink-0 p-4 lg:block">
             <ps-shell-sidebar
-              [items]="navigation"
+              [items]="navigation()"
               [collapsed]="layoutShell.desktopCollapsed()"
             />
           </div>
@@ -62,7 +63,7 @@ import { ShellSidebarComponent } from './shell-sidebar.component';
           [class.translate-x-0]="layoutShell.mobileSidebarOpen()"
         >
           <div class="h-full w-[min(86vw,21rem)]">
-            <ps-shell-sidebar [items]="navigation" (click)="layoutShell.closeMobileSidebar()" />
+            <ps-shell-sidebar [items]="navigation()" (click)="layoutShell.closeMobileSidebar()" />
           </div>
         </div>
       }
@@ -70,9 +71,10 @@ import { ShellSidebarComponent } from './shell-sidebar.component';
   `,
 })
 export class ShellComponent {
-  protected readonly navigation = SHELL_NAVIGATION;
   protected readonly layoutShell = inject(LayoutShellService);
   protected readonly authService = inject(AuthService);
+  protected readonly navigationService = inject(ShellNavigationService);
+  protected readonly navigation = this.navigationService.items;
 
   private readonly router = inject(Router);
   private readonly breakpointObserver = inject(BreakpointObserver);
@@ -93,6 +95,14 @@ export class ShellComponent {
 
   protected readonly currentPage = computed(() => {
     const url = this.currentUrl();
+    const matchedItem = findNavigationItemByRoute(this.navigation(), url);
+
+    if (matchedItem) {
+      return {
+        title: matchedItem.label,
+        description: matchedItem.description ?? 'Acceso disponible según tus permisos actuales.',
+      };
+    }
 
     if (url.startsWith('/orders')) {
       return {
@@ -139,5 +149,24 @@ export class ShellComponent {
         this.layoutShell.closeMobileSidebar();
       }
     });
+
+    if (this.authService.isAuthenticated()) {
+      void this.navigationService.reload();
+    }
   }
+}
+
+function findNavigationItemByRoute(items: NavigationItem[], currentUrl: string): NavigationItem | null {
+  const flattenedItems = flattenNavigationItems(items);
+
+  return (
+    flattenedItems
+      .filter((item) => item.route)
+      .sort((left, right) => (right.route?.length ?? 0) - (left.route?.length ?? 0))
+      .find((item) => currentUrl.startsWith(item.route!)) ?? null
+  );
+}
+
+function flattenNavigationItems(items: NavigationItem[]): NavigationItem[] {
+  return items.flatMap((item) => [item, ...(item.children ? flattenNavigationItems(item.children) : [])]);
 }

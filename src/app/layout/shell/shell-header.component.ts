@@ -48,7 +48,7 @@ import { InputComponent } from '@shared/ui/input/input.component';
         </div>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div class="w-full sm:min-w-[280px] sm:max-w-[320px]">
+          <!--div class="w-full sm:min-w-[280px] sm:max-w-[320px]">
             <ps-input
               label="Buscar"
               placeholder="Pedidos, aliados, reportes..."
@@ -56,10 +56,10 @@ import { InputComponent } from '@shared/ui/input/input.component';
               icon="search"
               type="search"
             />
-          </div>
+          </div-->
 
           <div class="flex items-center gap-3">
-            <button
+            <!--button
               type="button"
               class="ps-shell-icon-button"
             >
@@ -69,7 +69,7 @@ import { InputComponent } from '@shared/ui/input/input.component';
             <ps-button size="md">
               <ps-icon name="plus" [size]="18" />
               Nueva acción
-            </ps-button>
+            </ps-button-->
 
             @if (user()) {
               <div class="ps-user-menu">

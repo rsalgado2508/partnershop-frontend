@@ -1,13 +1,11 @@
 import { ChangeDetectionStrategy, Component, HostListener, input, output, signal } from '@angular/core';
 import { AuthenticatedUser } from '@core/auth/authenticated-user.model';
 import { BadgeComponent } from '@shared/ui/badge/badge.component';
-import { ButtonComponent } from '@shared/ui/button/button.component';
 import { IconComponent } from '@shared/ui/icon/icon.component';
-import { InputComponent } from '@shared/ui/input/input.component';
 
 @Component({
   selector: 'ps-shell-header',
-  imports: [BadgeComponent, ButtonComponent, IconComponent, InputComponent],
+  imports: [BadgeComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="ps-topbar">

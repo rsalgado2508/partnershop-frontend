@@ -26,6 +26,7 @@ import {
   CreateNovedadDrawerComponent,
   OrderNovedadDrawerData,
 } from '../components/create-novedad-drawer.component';
+import { ORDER_STATUS_CATALOG } from '../data-access/orders-status.catalog';
 import { OrdersRepository } from '../data-access/orders.repository';
 import { OrderRow, OrdersListQuery, OrdersListResponse } from '../data-access/orders.models';
 
@@ -362,13 +363,10 @@ export class OrdersPageComponent {
   ];
   protected readonly statusOptions: SelectOption[] = [
     { label: 'Todos', value: '' },
-    { label: '22 · Reportada', value: '22' },
-    { label: '23 · Confirmada', value: '23' },
-    { label: '24 · En preparación', value: '24' },
-    { label: '25 · Despachada', value: '25' },
-    { label: '26 · Entregada', value: '26' },
-    { label: '27 · Novedad', value: '27' },
-    { label: '28 · Cancelada', value: '28' },
+    ...ORDER_STATUS_CATALOG.map((status) => ({
+      label: `${status.code} · ${status.label}`,
+      value: String(status.code),
+    })),
   ];
   protected readonly reportDateRangeOptions: SelectOption[] = [
     { label: 'Todos', value: '' },

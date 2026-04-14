@@ -1,25 +1,9 @@
 import { OrderApiItem, OrdersApiEnvelope } from './orders-api.models';
 import { OrderRow, OrdersListResponse, OrderStatusView } from './orders.models';
+import { ORDER_STATUS_MAP } from './orders-status.catalog';
 
 function mapStatus(code: number): OrderStatusView {
-  switch (code) {
-    case 22:
-      return { code, label: 'Reportada', tone: 'brand' };
-    case 23:
-      return { code, label: 'Confirmada', tone: 'gold' };
-    case 24:
-      return { code, label: 'En preparación', tone: 'gold' };
-    case 25:
-      return { code, label: 'Despachada', tone: 'mint' };
-    case 26:
-      return { code, label: 'Entregada', tone: 'mint' };
-    case 27:
-      return { code, label: 'Novedad', tone: 'neutral' };
-    case 28:
-      return { code, label: 'Cancelada', tone: 'neutral' };
-    default:
-      return { code, label: `Estatus ${code}`, tone: 'neutral' };
-  }
+  return ORDER_STATUS_MAP.get(code) ?? { code, label: `Estatus ${code}`, tone: 'neutral' };
 }
 
 function parseAmount(value: string | null): number | null {

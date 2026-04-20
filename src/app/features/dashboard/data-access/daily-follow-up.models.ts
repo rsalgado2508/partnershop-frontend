@@ -1,3 +1,8 @@
+export interface DailyFollowUpQuery {
+  fechaDesde: string;
+  fechaHasta: string;
+}
+
 export interface DailyFollowUpApiItem {
   fechaSeguimiento: string;
   diaSeguimiento: string;

@@ -144,9 +144,9 @@
 
   .ps-nav-item-active {
     background:
-      linear-gradient(135deg, rgba(37, 111, 223, 0.12), rgba(20, 149, 122, 0.09)),
-      rgba(255, 255, 255, 0.95);
-    @apply text-brand-800 shadow-[inset_0_0_0_1px_rgba(37,111,223,0.14)];
+      linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(130, 170, 220, 0.08)),
+      rgba(255, 255, 255, 0.08);
+    @apply text-white shadow-[inset_0_0_0_1px_rgba(201,219,242,0.12)];
   }
 
   .ps-input-shell {
@@ -211,8 +211,10 @@
 
   .ps-shell-sidebar {
     @apply flex h-full flex-col rounded-[2rem] border border-white/70 p-4 text-white;
-    background: linear-gradient(180deg, #0f2341 0%, #14355f 52%, #102946 100%);
-    box-shadow: 0 32px 80px -34px rgba(15, 35, 65, 0.65);
+    background:
+      radial-gradient(circle at top, rgba(68, 112, 171, 0.18), transparent 24%),
+      linear-gradient(180deg, #10233f 0%, #17365d 52%, #112947 100%);
+    box-shadow: 0 32px 80px -34px rgba(9, 24, 46, 0.72);
   }
 
   .ps-shell-brand-mark {
@@ -222,12 +224,13 @@
   }
 
   .ps-shell-section {
-    @apply rounded-[1.65rem] border border-white/10 bg-white/6 p-2;
+    @apply rounded-[1.65rem] border border-white/10 p-2;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
   }
 
   .ps-shell-promo {
     @apply rounded-[1.65rem] border border-white/10 p-4;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
   }
 
   .ps-shell-icon-button {

@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { BadgeComponent } from '@shared/ui/badge/badge.component';
 import { ButtonComponent } from '@shared/ui/button/button.component';
 import { CardComponent } from '@shared/ui/card/card.component';
 import { EmptyStateComponent } from '@shared/ui/empty-state/empty-state.component';
 import { IconComponent } from '@shared/ui/icon/icon.component';
+import { InputComponent } from '@shared/ui/input/input.component';
 import { SkeletonComponent } from '@shared/ui/skeleton/skeleton.component';
 import { Subject, catchError, map, of, startWith, switchMap } from 'rxjs';
 import {
@@ -13,13 +15,21 @@ import {
   DailyFollowUpChartComponent,
   filterRowsBySeries,
 } from './daily-follow-up-chart.component';
+import { NovedadesCategoryBarChartComponent } from './novedades-category-bar-chart.component';
 import { DailyFollowUpRepository } from '../data-access/daily-follow-up.repository';
-import { DailyFollowUpRow } from '../data-access/daily-follow-up.models';
+import { DailyFollowUpQuery, DailyFollowUpRow } from '../data-access/daily-follow-up.models';
+import { NovedadesCategorySummaryRepository } from '../data-access/novedades-category-summary.repository';
+import { NovedadesCategorySummary } from '../data-access/novedades-category-summary.models';
 
 type DailyFollowUpViewState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'success'; data: DailyFollowUpRow[] };
+
+type NovedadesCategoryViewState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; data: NovedadesCategorySummary };
 
 interface KpiCard {
   label: string;
@@ -29,11 +39,29 @@ interface KpiCard {
   badgeLabel: string;
 }
 
+type DailyFollowUpFiltersForm = FormGroup<{
+  fechaDesde: FormControl<string>;
+  fechaHasta: FormControl<string>;
+}>;
+
 const INTEGER_FORMATTER = new Intl.NumberFormat('es-CO');
 const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+function dateRangeValidator(): ValidatorFn {
+  return (control): ValidationErrors | null => {
+    const fechaDesde = control.get('fechaDesde')?.value;
+    const fechaHasta = control.get('fechaHasta')?.value;
+
+    if (!fechaDesde || !fechaHasta) {
+      return null;
+    }
+
+    return fechaDesde < fechaHasta ? null : { invalidDateRange: true };
+  };
+}
 
 @Component({
   selector: 'ps-daily-follow-up-section',
@@ -44,6 +72,9 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
     DailyFollowUpChartComponent,
     EmptyStateComponent,
     IconComponent,
+    InputComponent,
+    NovedadesCategoryBarChartComponent,
+    ReactiveFormsModule,
     SkeletonComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -160,6 +191,38 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                 </ps-card>
               }
             </div>
+            
+            <form class="ps-filter-bar" [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
+              <div class="grid gap-4 lg:grid-cols-[220px_220px_auto_auto]">
+                <ps-input
+                  label="Fecha inicio"
+                  type="date"
+                  formControlName="fechaDesde"
+                  hint="Fecha inicial del rango."
+                />
+
+                <ps-input
+                  label="Fecha fin"
+                  type="date"
+                  formControlName="fechaHasta"
+                  hint="Fecha final del rango."
+                />
+
+                <div class="flex items-end">
+                  <ps-button type="submit" [disabled]="filtersForm.invalid">Aplicar rango</ps-button>
+                </div>
+
+                <div class="flex items-end">
+                  <ps-button type="button" variant="ghost" (click)="clearFilters()">Limpiar</ps-button>
+                </div>
+              </div>
+
+              @if (filtersForm.hasError('invalidDateRange')) {
+                <p class="mt-3 text-sm font-medium text-danger-500">
+                  La fecha inicial debe ser menor que la fecha final.
+                </p>
+              }
+            </form>
 
             <ps-card>
               <div class="flex flex-wrap items-start justify-between gap-4">
@@ -211,11 +274,11 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
               </div>
 
               <div class="mt-6 overflow-x-auto">
-                <table class="min-w-[1040px] w-full border-separate border-spacing-0">
+                <table class="min-w-[920px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr>
                       @for (column of tableColumns; track column) {
-                        <th class="border-b border-ink-100 bg-ink-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-ink-500 first:rounded-tl-[1.1rem] last:rounded-tr-[1.1rem]">
+                        <th class="border-b border-ink-100 bg-ink-50 px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.16em] text-ink-500 first:rounded-tl-[1.1rem] last:rounded-tr-[1.1rem]">
                           {{ column }}
                         </th>
                       }
@@ -225,32 +288,104 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                   <tbody>
                     @for (row of filteredRows(); track row.fechaSeguimiento) {
                       <tr class="transition-colors duration-200 hover:bg-brand-50/35">
-                        <td class="border-b border-ink-100 px-4 py-4 text-sm font-semibold text-ink-900">
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-semibold text-ink-900">
                           {{ row.fechaSeguimientoLabel }}
                         </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-sm text-ink-700">
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm text-ink-700">
                           {{ row.diaSeguimientoLabel }}
                         </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-medium tabular-nums text-ink-900">
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalEntre15y20) }}
                         </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-medium tabular-nums text-ink-900">
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalEntre7y15) }}
                         </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-medium tabular-nums text-ink-900">
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalGuiasMayorA2Dias) }}
                         </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-medium tabular-nums text-ink-900">
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalMayorA20) }}
-                        </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-medium tabular-nums text-ink-900">
-                          {{ formatDecimal(row.promedio) }}
                         </td>
                       </tr>
                     }
                   </tbody>
                 </table>
               </div>
+            </ps-card>
+
+            <ps-card>
+              <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
+                    Distribución de comentarios
+                  </p>
+                  <h4 class="mt-2 text-xl font-bold tracking-[-0.03em] text-ink-950">
+                    Categorías con mayor ocurrencia
+                  </h4>
+                  <p class="mt-2 text-sm text-ink-600">
+                    Consolidado por categoría para guías mayores a 2 días y órdenes mayores a 20 días.
+                  </p>
+                </div>
+              </div>
+
+              @switch (novedadesStateStatus()) {
+                @case ('loading') {
+                  <div class="mt-6 grid gap-4 xl:grid-cols-2">
+                    @for (_item of [1, 2]; track $index) {
+                      <div class="rounded-[1.5rem] border border-ink-100 bg-white p-5">
+                        <ps-skeleton width="30%" height="0.9rem" />
+                        <div class="mt-3">
+                          <ps-skeleton width="60%" height="1.5rem" />
+                        </div>
+                        <div class="mt-6 space-y-4">
+                          @for (_row of [1, 2, 3, 4]; track $index) {
+                            <div class="space-y-2">
+                              <ps-skeleton width="100%" height="0.9rem" />
+                              <ps-skeleton width="100%" height="0.75rem" />
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+
+                @case ('error') {
+                  <div class="mt-6">
+                    <ps-empty-state
+                      icon="chart"
+                      title="No fue posible cargar la distribución de novedades"
+                      [description]="novedadesErrorMessage()"
+                    >
+                      <ps-button variant="secondary" (click)="reload()">
+                        Reintentar consulta
+                      </ps-button>
+                    </ps-empty-state>
+                  </div>
+                }
+
+                @case ('success') {
+                  <div class="mt-6 grid gap-4 xl:grid-cols-2">
+                    <ps-novedades-category-bar-chart
+                      title="Guías mayores a 2 días"
+                      description="Total de ocurrencias por categoría de novedad para guías con mayor antigüedad operativa."
+                      eyebrow="Comentarios"
+                      accentColor="#155ac0"
+                      accentSoftColor="#d8eaff"
+                      [items]="novedadesSummary()!.guiasMayorA2Dias"
+                    />
+
+                    <ps-novedades-category-bar-chart
+                      title="Órdenes mayores a 20 días"
+                      description="Total de ocurrencias por categoría de novedad para órdenes en el rango más crítico."
+                      eyebrow="Comentarios"
+                      accentColor="#d94f63"
+                      accentSoftColor="#ffe1e7"
+                      [items]="novedadesSummary()!.mayorA20Dias"
+                    />
+                  </div>
+                }
+              }
             </ps-card>
           } @else {
             <ps-card>
@@ -274,18 +409,29 @@ export class DailyFollowUpSectionComponent {
     '7-15 días',
     'Guía gen/pendi > 2 días',
     'Más de 20',
-    'Promedio',
   ];
 
   private readonly repository = inject(DailyFollowUpRepository);
+  private readonly novedadesRepository = inject(NovedadesCategorySummaryRepository);
   private readonly reload$ = new Subject<void>();
+  private readonly filtersState = signal<DailyFollowUpQuery>({
+    fechaDesde: '',
+    fechaHasta: '',
+  });
   protected readonly selectedSeries = signal<ChartSeriesKey>('guiasMayorA2Dias');
+  protected readonly filtersForm: DailyFollowUpFiltersForm = new FormGroup(
+    {
+      fechaDesde: new FormControl('', { nonNullable: true }),
+      fechaHasta: new FormControl('', { nonNullable: true }),
+    },
+    { validators: dateRangeValidator() },
+  );
 
   protected readonly viewState = toSignal(
     this.reload$.pipe(
       startWith(undefined),
       switchMap(() =>
-        this.repository.list().pipe(
+        this.repository.list(this.filtersState()).pipe(
           map((data): DailyFollowUpViewState => ({ status: 'success', data })),
           startWith({ status: 'loading' } as DailyFollowUpViewState),
           catchError((error: unknown) => {
@@ -306,11 +452,41 @@ export class DailyFollowUpSectionComponent {
     ),
     { initialValue: { status: 'loading' } as DailyFollowUpViewState },
   );
+  protected readonly novedadesViewState = toSignal(
+    this.reload$.pipe(
+      startWith(undefined),
+      switchMap(() =>
+        this.novedadesRepository.listSummary().pipe(
+          map((data): NovedadesCategoryViewState => ({ status: 'success', data })),
+          startWith({ status: 'loading' } as NovedadesCategoryViewState),
+          catchError((error: unknown) => {
+            console.error('Dashboard novedades summary load failed', error);
+
+            const message =
+              error instanceof HttpErrorResponse
+                ? `El servicio respondió con ${error.status || 'error'} ${error.statusText || ''}`.trim()
+                : 'Revisa la conexión con el servicio o intenta nuevamente en unos segundos.';
+
+            return of({
+              status: 'error',
+              message,
+            } as NovedadesCategoryViewState);
+          }),
+        ),
+      ),
+    ),
+    { initialValue: { status: 'loading' } as NovedadesCategoryViewState },
+  );
 
   protected readonly stateStatus = computed(() => this.viewState().status);
+  protected readonly novedadesStateStatus = computed(() => this.novedadesViewState().status);
   protected readonly rows = computed(() => {
     const state = this.viewState();
     return state.status === 'success' ? state.data : [];
+  });
+  protected readonly novedadesSummary = computed(() => {
+    const state = this.novedadesViewState();
+    return state.status === 'success' ? state.data : null;
   });
   protected readonly latestRow = computed(() => {
     const rows = this.rows();
@@ -318,6 +494,10 @@ export class DailyFollowUpSectionComponent {
   });
   protected readonly errorMessage = computed(() => {
     const state = this.viewState();
+    return state.status === 'error' ? state.message : '';
+  });
+  protected readonly novedadesErrorMessage = computed(() => {
+    const state = this.novedadesViewState();
     return state.status === 'error' ? state.message : '';
   });
   protected readonly filteredRows = computed(() =>
@@ -387,6 +567,36 @@ export class DailyFollowUpSectionComponent {
       },
     ];
   });
+
+  protected applyFilters(): void {
+    if (this.filtersForm.invalid) {
+      this.filtersForm.markAllAsTouched();
+      return;
+    }
+
+    const { fechaDesde, fechaHasta } = this.filtersForm.getRawValue();
+
+    this.filtersState.set({
+      fechaDesde: fechaDesde.trim(),
+      fechaHasta: fechaHasta.trim(),
+    });
+    this.reload();
+  }
+
+  protected clearFilters(): void {
+    this.filtersForm.reset(
+      {
+        fechaDesde: '',
+        fechaHasta: '',
+      },
+      { emitEvent: false },
+    );
+    this.filtersState.set({
+      fechaDesde: '',
+      fechaHasta: '',
+    });
+    this.reload();
+  }
 
   protected reload(): void {
     this.reload$.next();

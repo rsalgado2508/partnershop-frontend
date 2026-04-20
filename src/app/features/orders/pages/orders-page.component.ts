@@ -149,7 +149,7 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             </p>
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-3">
+          <div class="grid gap-2 sm:grid-cols-2">
             <div class="ps-kpi-card min-w-[170px]">
               @if (isFollowUpMode) {
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
@@ -166,12 +166,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                   {{ currentQuery().page }}
                 </p>
               }
-            </div>
-            <div class="ps-kpi-card min-w-[170px]">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">Límite</p>
-              <p class="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-ink-950">
-                {{ currentQuery().limit }}
-              </p>
             </div>
             <div class="ps-kpi-card min-w-[170px]">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">Total visible</p>
@@ -359,7 +353,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                         <th>Estatus</th>
                         <th>Total</th>
                         <th>Fecha reporte</th>
-                        <th>Fecha creación</th>
                         <th>Guía</th>
                         <th>Transportadora</th>
                         <th>Acción</th>
@@ -378,7 +371,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                           </td>
                           <td>{{ formatCurrency(row.totalOrden) }}</td>
                           <td>{{ formatDate(row.fechaReporte) }}</td>
-                          <td>{{ formatDateTime(row.fechaCreacion) }}</td>
                           <td>{{ displayValue(row.numeroGuia) }}</td>
                           <td>{{ displayValue(row.transportadoraNombre) }}</td>
                           <td>
@@ -471,7 +463,7 @@ export class OrdersPageComponent {
     : 'Listado de Órdenes';
   protected readonly pageTitle = this.isFollowUpMode
     ? 'Órdenes en seguimiento'
-    : 'Órdenes PartnerShop';
+    : 'Histórico de Órdenes';
   protected readonly pageDescription = this.isFollowUpMode
     ? 'Vista prefiltrada por rangos operativos. Al cambiar el botón del rango se vuelve a consultar el mismo listado de órdenes con sus acciones disponibles.'
     : 'Puedes consultar y filtrar las órdenes usando los controles de búsqueda, estatus, plataforma y rango de fecha de reporte. Haz clic en Aplicar filtros para consultar.';

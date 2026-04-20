@@ -24,7 +24,7 @@ import { ButtonComponent } from '@shared/ui/button/button.component';
 
             <div class="mt-8 text-center">
               <p class="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-brand-700">
-                Centro de control
+                Backoffice
               </p>
               <h1 class="mt-4 text-3xl font-extrabold tracking-[-0.04em] text-ink-950 sm:text-[2.5rem]">
                 Acceso seguro

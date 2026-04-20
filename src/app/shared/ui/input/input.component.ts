@@ -66,7 +66,7 @@ export class InputComponent implements ControlValueAccessor {
   readonly label = input<string>();
   readonly hint = input<string>();
   readonly placeholder = input('');
-  readonly type = input<'text' | 'email' | 'password' | 'search'>('text');
+  readonly type = input<'text' | 'email' | 'password' | 'search' | 'date'>('text');
   readonly icon = input<string>();
   readonly errorMessage = input<string>();
   readonly successMessage = input<string>();

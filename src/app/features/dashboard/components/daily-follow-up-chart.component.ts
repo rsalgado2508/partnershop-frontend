@@ -25,7 +25,6 @@ interface ChartSeriesOption {
   accentColor: string;
   accentDarkColor: string;
   accentSoftColor: string;
-  areaOpacity: number;
 }
 
 const INTEGER_FORMATTER = new Intl.NumberFormat('es-CO');
@@ -39,7 +38,6 @@ const CHART_SERIES: ChartSeriesOption[] = [
     accentColor: '#0f9f68',
     accentDarkColor: '#0c7a50',
     accentSoftColor: '#d2f4ea',
-    areaOpacity: 0.24,
   },
   {
     key: 'entre7y15',
@@ -50,7 +48,6 @@ const CHART_SERIES: ChartSeriesOption[] = [
     accentColor: '#8b5cf6',
     accentDarkColor: '#6d28d9',
     accentSoftColor: '#ede9fe',
-    areaOpacity: 0.22,
   },
   {
     key: 'entre15y20',
@@ -61,7 +58,6 @@ const CHART_SERIES: ChartSeriesOption[] = [
     accentColor: '#ea9b19',
     accentDarkColor: '#b96a00',
     accentSoftColor: '#fff0c9',
-    areaOpacity: 0.24,
   },
   {
     key: 'mayorA20',
@@ -72,7 +68,6 @@ const CHART_SERIES: ChartSeriesOption[] = [
     accentColor: '#d94f63',
     accentDarkColor: '#b9384f',
     accentSoftColor: '#ffe1e7',
-    areaOpacity: 0.24,
   },
 ];
 
@@ -185,10 +180,6 @@ export function filterRowsBySeries(
                 </g>
               }
 
-              @if (areaPath()) {
-                <path [attr.d]="areaPath()" fill="url(#dailyFollowArea)" opacity="0.9" />
-              }
-
               @if (linePath()) {
                 <path
                   [attr.d]="linePath()"
@@ -215,12 +206,12 @@ export function filterRowsBySeries(
                   <circle
                     [attr.cx]="point.x"
                     [attr.cy]="point.y"
-                    r="6"
+                    r="4.5"
                     fill="#ffffff"
                     [attr.stroke]="activeSeries().accentColor"
-                    stroke-width="3"
+                    stroke-width="2.5"
                   >
-                    <title>{{ point.fullLabel }}: {{ formatInteger(point.value) }}</title>
+                    <title>{{ formatInteger(point.value) }}</title>
                   </circle>
                 </g>
               }
@@ -235,21 +226,6 @@ export function filterRowsBySeries(
                   {{ label.label }}
                 </text>
               }
-
-              <defs>
-                <linearGradient id="dailyFollowArea" x1="0" x2="0" y1="32" y2="228">
-                  <stop
-                    offset="0%"
-                    [attr.stop-color]="activeSeries().accentColor"
-                    [attr.stop-opacity]="activeSeries().areaOpacity"
-                  />
-                  <stop
-                    offset="100%"
-                    [attr.stop-color]="activeSeries().accentColor"
-                    stop-opacity="0.02"
-                  />
-                </linearGradient>
-              </defs>
             </svg>
           </div>
         </div>
@@ -324,17 +300,6 @@ export class DailyFollowUpChartComponent {
   });
 
   protected readonly linePath = computed(() => this.buildLinePath(this.points()));
-
-  protected readonly areaPath = computed(() => {
-    const points = this.points();
-
-    if (!points.length) {
-      return '';
-    }
-
-    const baseline = this.height - this.bottomPadding;
-    return `${this.buildLinePath(points)} L ${points[points.length - 1].x} ${baseline} L ${points[0].x} ${baseline} Z`;
-  });
 
   protected readonly trendPath = computed(() => {
     const points = this.points();

@@ -72,7 +72,7 @@ describe('ShellNavigationService', () => {
         },
         {
           key: 'issue_category',
-          label: 'Tipo de Novedades',
+          label: 'Tipo de Comentarios',
           icon: 'category',
           route: '/configuracion/categorias-novedad',
         },
@@ -103,7 +103,7 @@ describe('ShellNavigationService', () => {
       },
       {
         id: 'issue_category',
-        label: 'Tipo de Novedades',
+        label: 'Tipo de Comentarios',
         icon: 'settings',
         route: '/settings',
         description: 'Gestión de categorías de incidencias',

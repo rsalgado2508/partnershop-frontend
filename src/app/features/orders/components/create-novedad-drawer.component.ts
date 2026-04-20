@@ -83,7 +83,7 @@ interface OrderNovedadDrawerResult {
             </div>
 
             <h2 class="mt-4 text-2xl font-extrabold tracking-[-0.04em] text-ink-950">
-              Novedades de la orden {{ order.idOrden }}
+              Comentarios de la orden {{ order.idOrden }}
             </h2>
 
             <p class="mt-2 text-sm leading-6 text-ink-600">
@@ -535,7 +535,7 @@ export class CreateNovedadDrawerComponent {
               this.historyState.set({
                 status: 'error',
                 message:
-                  'No se pudo consultar el historial de novedades de esta orden. Intenta nuevamente.',
+                  'No se pudo consultar el historial de comentarios de esta orden. Intenta nuevamente.',
               });
 
               return of(null);

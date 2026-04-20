@@ -1,14 +1,12 @@
 import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavigationItem } from '@shared/models/navigation.model';
-import { BadgeComponent } from '@shared/ui/badge/badge.component';
-import { ButtonComponent } from '@shared/ui/button/button.component';
 import { IconComponent } from '@shared/ui/icon/icon.component';
 import { trackByKey } from '@shared/utils/track-by.util';
 
 @Component({
   selector: 'ps-shell-sidebar',
-  imports: [RouterLink, RouterLinkActive, BadgeComponent, ButtonComponent, IconComponent],
+  imports: [RouterLink, RouterLinkActive, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <aside
@@ -16,17 +14,29 @@ import { trackByKey } from '@shared/utils/track-by.util';
       [class.w-[var(--spacing-sidebar)]]="!collapsed()"
       [class.w-[var(--spacing-sidebar-collapsed)]]="collapsed()"
     >
-      <div class="flex items-center gap-3 px-2 pb-5 pt-2">
-        <div class="ps-shell-brand-mark">
-          <ps-icon name="sparkles" [size]="22" />
-        </div>
-
+      <div class="px-2 pb-5 pt-2">
         @if (!collapsed()) {
-          <div class="min-w-0">
-            <p class="truncate text-sm font-semibold tracking-[0.22em] text-white/55 uppercase">
-              PartnerShop
-            </p>
-            <h2 class="truncate text-lg font-semibold text-white">Centro de control</h2>
+          <div class="rounded-[1.6rem] border border-white/12 bg-[#f4f1ea] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+            <img
+              src="https://www.partnershopcol.com/assets/partnershop_logo_clean_2x.webp"
+              alt="PartnerShop"
+              class="h-auto w-full"
+            />
+            <div class="mt-4 border-t border-ink-200/80 pt-3 mx-auto w-fit">
+              <p class="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-ink-500">
+                BackOffice
+              </p>
+            </div>
+          </div>
+        } @else {
+          <div class="flex justify-center">
+            <div class="grid h-12 w-12 place-items-center rounded-[1.35rem] border border-white/15 bg-[#f4f1ea] shadow-[0_14px_30px_-20px_rgba(0,0,0,0.4)]">
+              <img
+                src="https://www.partnershopcol.com/assets/partnershop_logo_clean_2x.webp"
+                alt="PartnerShop"
+                class="h-7 w-7 object-contain"
+              />
+            </div>
           </div>
         }
       </div>
@@ -41,7 +51,7 @@ import { trackByKey } from '@shared/utils/track-by.util';
                 (click)="toggleSection(item.id)"
               >
                 <span class="flex items-center gap-3">
-                  <span class="rounded-2xl bg-white/8 p-2 text-white/85">
+                  <span class="rounded-2xl bg-white/8 p-2 text-white/82">
                     <ps-icon [name]="item.icon ?? 'dashboard'" [size]="18" />
                   </span>
                   <span class="min-w-0 text-left">
@@ -63,7 +73,7 @@ import { trackByKey } from '@shared/utils/track-by.util';
                       [routerLink]="child.route ?? '/'"
                       [title]="child.label"
                     >
-                      <span class="rounded-2xl bg-white/7 p-2 text-white/80">
+                      <span class="rounded-2xl bg-white/8 p-2 text-white/78">
                         <ps-icon [name]="child.icon ?? 'dashboard'" [size]="16" />
                       </span>
 
@@ -72,9 +82,6 @@ import { trackByKey } from '@shared/utils/track-by.util';
                         <span class="block truncate text-xs text-white/42">{{ child.description }}</span>
                       </span>
 
-                      @if (child.badge) {
-                        <ps-badge tone="mint">{{ child.badge }}</ps-badge>
-                      }
                     </a>
                   }
                 </div>
@@ -87,7 +94,7 @@ import { trackByKey } from '@shared/utils/track-by.util';
                 [routerLink]="item.route ?? item.children?.[0]?.route ?? '/'"
                 [title]="collapsed() ? item.label : ''"
               >
-                <span class="rounded-2xl bg-white/8 p-2 text-white/88">
+                <span class="rounded-2xl bg-white/8 p-2 text-white/82">
                   <ps-icon [name]="item.icon ?? 'dashboard'" [size]="18" />
                 </span>
 
@@ -104,23 +111,22 @@ import { trackByKey } from '@shared/utils/track-by.util';
       </div>
 
       <div class="mt-auto px-2 pt-5">
-        <div
-          class="ps-shell-promo"
-        >
+        <div class="rounded-[1.6rem] border border-white/10 bg-white/[0.06] px-5 py-4">
           @if (!collapsed()) {
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/45">
-              Progreso base
+            <p class="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-white/42">
+              PartnerShop
             </p>
-            <h3 class="mt-2 text-base font-semibold">Sistema de diseño en evolución</h3>
-            <p class="mt-2 text-sm leading-6 text-white/62">
-              La base visual de PartnerShop ya está lista para crecer sin perder consistencia.
+            <h3 class="mt-2 text-base font-semibold text-white">Operación con contexto</h3>
+            <p class="mt-2 text-sm leading-6 text-white/60">
+              Navegación interna para pedidos, seguimiento y gestión del equipo.
             </p>
-            <div class="mt-4">
-              <ps-button variant="secondary" size="sm">Explorar sistema</ps-button>
-            </div>
           } @else {
             <div class="flex justify-center text-white/70">
-              <ps-icon name="sparkles" [size]="20" />
+              <img
+                src="https://www.partnershopcol.com/assets/partnershop_logo_clean_2x.webp"
+                alt="PartnerShop"
+                class="h-7 w-7 rounded-full bg-[#f4f1ea] object-contain p-1"
+              />
             </div>
           }
         </div>

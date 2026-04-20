@@ -3,7 +3,7 @@ import { OrderRow, OrdersListResponse, OrderStatusView } from './orders.models';
 import { ORDER_STATUS_MAP } from './orders-status.catalog';
 
 function mapStatus(code: number): OrderStatusView {
-  return ORDER_STATUS_MAP.get(code) ?? { code, label: `Estatus ${code}`, tone: 'neutral' };
+  return ORDER_STATUS_MAP.get(code) ?? { code, label: `${code}`, tone: 'neutral' };
 }
 
 function parseAmount(value: string | null): number | null {

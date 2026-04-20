@@ -35,7 +35,8 @@ const ROUTE_ALIASES: Record<string, string> = {
 
 const MENU_DESCRIPTIONS: Record<string, string> = {
   dashboard: 'Resumen ejecutivo',
-  orders: 'Seguimiento operativo',
+  orders: 'Total de órdenes',
+  orders_tracking: 'Seguimiento de órdenes',
   issue_category: 'Gestión de categorías de incidencias',
   users: 'Usuarios y roles',
 };

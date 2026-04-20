@@ -112,7 +112,7 @@ interface OrderNovedadDrawerResult {
               [class.text-ink-600]="activeView() !== 'create'"
               (click)="switchView('create')"
             >
-              Registrar novedad
+              Registrar Comentario
             </button>
 
             <button
@@ -174,7 +174,7 @@ interface OrderNovedadDrawerResult {
             <form class="space-y-5" [formGroup]="form" (ngSubmit)="submit()">
               <div class="space-y-2">
                 <label class="flex w-full flex-col gap-2">
-                  <span class="ps-field-label">Categoría de novedad</span>
+                  <span class="ps-field-label">Tipificación comentario</span>
 
                   <span
                     class="ps-input-shell"
@@ -195,7 +195,7 @@ interface OrderNovedadDrawerResult {
                           : null
                       "
                     >
-                      <option value="">Selecciona una categoría activa</option>
+                      <option value="">Selecciona una tipificación activa</option>
 
                       @for (category of activeCategories(); track category.idCategoria) {
                         <option [value]="category.idCategoria">{{ category.nombre }}</option>
@@ -221,7 +221,7 @@ interface OrderNovedadDrawerResult {
 
                   @if (hasControlError('idCategoria')) {
                     <span class="ps-field-message ps-field-message-error">
-                      Debes seleccionar una categoría de novedad.
+                      Debes seleccionar una tipificación activa.
                     </span>
                   }
                 </label>
@@ -244,13 +244,13 @@ interface OrderNovedadDrawerResult {
                     class="min-h-32 w-full resize-y border-none bg-transparent p-0 text-sm text-ink-950 outline-none placeholder:text-ink-400"
                     formControlName="descripcion"
                     rows="6"
-                    placeholder="Describe claramente la novedad para que el equipo operativo pueda darle seguimiento."
+                    placeholder="Describe claramente el comentario para que el equipo operativo pueda darle seguimiento."
                     [attr.aria-invalid]="hasControlError('descripcion')"
                   ></textarea>
                 </span>
 
                 <span class="ps-field-hint">
-                  Conservaremos el texto ingresado si ocurre un error al crear la novedad.
+                  Conservaremos el texto ingresado si ocurre un error al crear el comentario.
                 </span>
 
                 @if (hasControlError('descripcion')) {
@@ -266,7 +266,7 @@ interface OrderNovedadDrawerResult {
             <div class="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
-                  Historial de novedades
+                  Historial de comentarios
                 </p>
                 <p class="mt-1 text-sm text-ink-600">
                   Cronología de la más reciente a la más antigua.
@@ -274,7 +274,7 @@ interface OrderNovedadDrawerResult {
               </div>
 
               @if (historyState().status === 'success') {
-                <ps-badge tone="neutral">{{ historyItems().length }} registradas</ps-badge>
+                <ps-badge tone="neutral">{{ historyItems().length }} registrados</ps-badge>
               }
             </div>
 
@@ -317,11 +317,11 @@ interface OrderNovedadDrawerResult {
               @case ('success') {
                 @if (!historyItems().length) {
                   <ps-empty-state
-                    title="Sin novedades registradas"
-                    description="Esta orden aún no tiene novedades registradas."
+                    title="Sin comentarios registrados"
+                    description="Esta orden aún no tiene comentarios registrados."
                   >
                     <ps-button type="button" variant="ghost" (click)="switchView('create')">
-                      Registrar la primera
+                      Registrar el primero
                     </ps-button>
                   </ps-empty-state>
                 } @else {
@@ -415,11 +415,11 @@ interface OrderNovedadDrawerResult {
 
           @if (activeView() === 'create') {
             <ps-button type="button" [disabled]="isSubmitDisabled()" (click)="submit()">
-              {{ isSubmitting() ? 'Guardando novedad...' : 'Guardar novedad' }}
+              {{ isSubmitting() ? 'Guardando comentario...' : 'Guardar Comentario' }}
             </ps-button>
           } @else {
             <ps-button type="button" variant="secondary" (click)="switchView('create')">
-              Registrar novedad
+              Registrar comentario
             </ps-button>
           }
         </div>

@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -18,6 +18,7 @@ import {
   distinctUntilChanged,
   map,
   of,
+  firstValueFrom,
   startWith,
   switchMap,
   tap,
@@ -39,9 +40,26 @@ type FiltersForm = FormGroup<{
   busqueda: FormControl<string>;
   estatus: FormControl<string>;
   plataforma: FormControl<string>;
-  rangoFechaReporte: FormControl<string>;
+  rangoFechaReporte: FormControl<ReportDateRangeValue>;
   limit: FormControl<string>;
 }>;
+
+type OrdersPageMode = 'default' | 'followUp';
+type ReportDateRangeValue =
+  | ''
+  | 'ultimos_7_dias'
+  | 'entre_7_y_15_dias'
+  | 'entre_15_y_20_dias'
+  | 'mas_de_20_dias'
+  | 'guias_mayor_a_2_dias';
+
+interface FollowUpPreset {
+  label: string;
+  value: Exclude<ReportDateRangeValue, '' | 'ultimos_7_dias'>;
+  accentColor: string;
+  accentDarkColor: string;
+  accentSoftColor: string;
+}
 
 const DEFAULT_QUERY: OrdersListQuery = {
   page: 1,
@@ -51,6 +69,50 @@ const DEFAULT_QUERY: OrdersListQuery = {
   plataforma: '',
   rangoFechaReporte: '',
 };
+
+const REPORT_DATE_RANGE_OPTIONS: SelectOption[] = [
+  { label: 'Todos', value: '' },
+  { label: 'Últimos 7 días', value: 'ultimos_7_dias' },
+  { label: 'Guía gen/pendi > 2 días', value: 'guias_mayor_a_2_dias' },
+  { label: 'Entre 7 y 15 días', value: 'entre_7_y_15_dias' },
+  { label: 'Entre 15 y 20 días', value: 'entre_15_y_20_dias' },
+  { label: 'Más de 20 días', value: 'mas_de_20_dias' },
+];
+
+const REPORT_DATE_RANGE_VALUES = new Set(
+  REPORT_DATE_RANGE_OPTIONS.map((option) => option.value),
+);
+
+const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
+  {
+    label: 'Guía gen/pendi > 2 días',
+    value: 'guias_mayor_a_2_dias',
+    accentColor: '#0f9f68',
+    accentDarkColor: '#0c7a50',
+    accentSoftColor: '#d2f4ea',
+  },
+  {
+    label: '7 a 15 días',
+    value: 'entre_7_y_15_dias',
+    accentColor: '#8b5cf6',
+    accentDarkColor: '#6d28d9',
+    accentSoftColor: '#ede9fe',
+  },
+  {
+    label: '15 a 20 días',
+    value: 'entre_15_y_20_dias',
+    accentColor: '#ea9b19',
+    accentDarkColor: '#b96a00',
+    accentSoftColor: '#fff0c9',
+  },
+  {
+    label: 'Más de 20 días',
+    value: 'mas_de_20_dias',
+    accentColor: '#d94f63',
+    accentDarkColor: '#b9384f',
+    accentSoftColor: '#ffe1e7',
+  },
+];
 
 @Component({
   selector: 'ps-orders-page',
@@ -74,26 +136,36 @@ const DEFAULT_QUERY: OrdersListQuery = {
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div class="max-w-3xl">
             <div class="flex flex-wrap items-center gap-2">
-              <ps-badge tone="brand">Listado de Órdenes</ps-badge>
+              <ps-badge tone="brand">{{ pageBadgeLabel }}</ps-badge>
               <!--ps-badge tone="mint">Backend NestJS</ps-badge-->
             </div>
 
             <h2 class="mt-5 text-3xl font-extrabold tracking-[-0.04em] text-ink-950 md:text-[2.8rem]">
-              Órdenes PartnerShop <!--code>/api/ordenes</code-->
+              {{ pageTitle }} <!--code>/api/ordenes</code-->
             </h2>
 
             <p class="mt-4 max-w-2xl text-sm leading-7 text-ink-600">
-              Puedes consultar y filtrar las órdenes usando los controles de búsqueda, estatus, 
-              plataforma y rango de fecha de reporte. Has clic en Aplicar filtros para consultar.
+              {{ pageDescription }}
             </p>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="ps-kpi-card min-w-[170px]">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">Página actual</p>
-              <p class="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-ink-950">
-                {{ currentQuery().page }}
-              </p>
+              @if (isFollowUpMode) {
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+                  Rango activo
+                </p>
+                <p class="mt-3 text-lg font-extrabold tracking-[-0.04em] text-ink-950">
+                  {{ activeRangeLabel() }}
+                </p>
+              } @else {
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+                  Página actual
+                </p>
+                <p class="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-ink-950">
+                  {{ currentQuery().page }}
+                </p>
+              }
             </div>
             <div class="ps-kpi-card min-w-[170px]">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">Límite</p>
@@ -111,8 +183,36 @@ const DEFAULT_QUERY: OrdersListQuery = {
         </div>
       </section>
 
+      @if (isFollowUpMode) {
+        <ps-card padding="sm">
+          <div class="flex flex-wrap items-center gap-3">
+            @for (preset of followUpPresets; track preset.value) {
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200"
+                [class.border-ink-200]="currentQuery().rangoFechaReporte !== preset.value"
+                [class.bg-white]="currentQuery().rangoFechaReporte !== preset.value"
+                [class.text-ink-700]="currentQuery().rangoFechaReporte !== preset.value"
+                [class.hover:border-brand-200]="currentQuery().rangoFechaReporte !== preset.value"
+                [class.hover:text-brand-800]="currentQuery().rangoFechaReporte !== preset.value"
+                [style.borderColor]="currentQuery().rangoFechaReporte === preset.value ? preset.accentColor : null"
+                [style.backgroundColor]="currentQuery().rangoFechaReporte === preset.value ? preset.accentSoftColor : null"
+                [style.color]="currentQuery().rangoFechaReporte === preset.value ? preset.accentDarkColor : null"
+                (click)="selectFollowUpPreset(preset.value)"
+              >
+                <span
+                  class="h-2.5 w-2.5 rounded-full"
+                  [style.backgroundColor]="preset.accentColor"
+                ></span>
+                {{ preset.label }}
+              </button>
+            }
+          </div>
+        </ps-card>
+      }
+
       <form class="ps-filter-bar" [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
-        <div class="grid gap-4 xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_240px_180px_auto_auto]">
+        <div class="grid gap-4" [ngClass]="filtersGridClass">
           <ps-input
             label="Búsqueda"
             placeholder="Número de orden, orden tienda o guía"
@@ -137,13 +237,15 @@ const DEFAULT_QUERY: OrdersListQuery = {
             hint="Filtro directo por plataforma."
           />
 
-          <ps-select
-            label="Rango fecha reporte"
-            icon="calendar"
-            formControlName="rangoFechaReporte"
-            [options]="reportDateRangeOptions"
-            hint="Filtro agrupado por antiguedad del reporte."
-          />
+          @if (!isFollowUpMode) {
+            <ps-select
+              label="Rango fecha reporte"
+              icon="calendar"
+              formControlName="rangoFechaReporte"
+              [options]="reportDateRangeOptions"
+              hint="Filtro agrupado por antiguedad del reporte."
+            />
+          }
 
           <ps-select
             label="Filas por página"
@@ -165,22 +267,34 @@ const DEFAULT_QUERY: OrdersListQuery = {
       </form>
 
       <ps-card>
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
               Listado de órdenes
             </p>
             <h3 class="mt-2 text-xl font-bold tracking-[-0.03em] text-ink-950">
-              Operación server-side con filtros y paginación real
+              {{ listTitle }}
             </h3>
           </div>
 
-          <div class="text-sm text-ink-500">
-            @if (ordersData()) {
-              Mostrando {{ firstItemIndex() }}-{{ lastItemIndex() }} de {{ totalItems() }} órdenes
-            } @else {
-              Esperando respuesta del backend
-            }
+          <div class="flex flex-col gap-3 text-sm text-ink-500 sm:flex-row sm:items-center">
+            <div>
+              @if (ordersData()) {
+                Mostrando {{ firstItemIndex() }}-{{ lastItemIndex() }} de {{ totalItems() }} órdenes
+              } @else {
+                Esperando respuesta del backend
+              }
+            </div>
+
+            <ps-button
+              size="sm"
+              variant="secondary"
+              type="button"
+              [disabled]="!ordersData()?.rows?.length || exportingCsv()"
+              (click)="exportCurrentOrdersToCsv()"
+            >
+              {{ exportingCsv() ? 'Exportando...' : exportButtonLabel }}
+            </ps-button>
           </div>
         </div>
 
@@ -283,7 +397,7 @@ const DEFAULT_QUERY: OrdersListQuery = {
                                 type="button"
                                 (click)="openOrderNovedadDrawer(row, 'create')"
                               >
-                                Registrar novedad
+                                Registrar comentario
                               </ps-button>
                             </div>
                           </td>
@@ -341,6 +455,35 @@ const DEFAULT_QUERY: OrdersListQuery = {
   `,
 })
 export class OrdersPageComponent {
+  private readonly document = inject(DOCUMENT);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly ordersRepository = inject(OrdersRepository);
+  private readonly reload$ = new Subject<void>();
+  protected readonly exportingCsv = signal(false);
+  protected readonly pageMode: OrdersPageMode =
+    this.route.snapshot.data['mode'] === 'followUp' ? 'followUp' : 'default';
+  protected readonly isFollowUpMode = this.pageMode === 'followUp';
+  protected readonly pageBadgeLabel = this.isFollowUpMode
+    ? 'Seguimiento por rango'
+    : 'Listado de Órdenes';
+  protected readonly pageTitle = this.isFollowUpMode
+    ? 'Órdenes en seguimiento'
+    : 'Órdenes PartnerShop';
+  protected readonly pageDescription = this.isFollowUpMode
+    ? 'Vista prefiltrada por rangos operativos. Al cambiar el botón del rango se vuelve a consultar el mismo listado de órdenes con sus acciones disponibles.'
+    : 'Puedes consultar y filtrar las órdenes usando los controles de búsqueda, estatus, plataforma y rango de fecha de reporte. Haz clic en Aplicar filtros para consultar.';
+  protected readonly listTitle = this.isFollowUpMode
+    ? 'Órdenes filtradas por backlog operativo'
+    : 'Resultado de la consulta actual';
+  protected readonly exportButtonLabel = this.isFollowUpMode
+    ? 'Exportar todo CSV'
+    : 'Exportar CSV';
+  protected readonly filtersGridClass = this.isFollowUpMode
+    ? 'xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_180px_auto_auto]'
+    : 'xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_240px_180px_auto_auto]';
   protected readonly columns = [
     'Id orden',
     'Orden tienda',
@@ -360,34 +503,26 @@ export class OrdersPageComponent {
     { label: '10 filas', value: '10' },
     { label: '25 filas', value: '25' },
     { label: '50 filas', value: '50' },
+    { label: '100 filas', value: '100' },
   ];
   protected readonly statusOptions: SelectOption[] = [
     { label: 'Todos', value: '' },
     ...ORDER_STATUS_CATALOG.map((status) => ({
       label: `${status.code} · ${status.label}`,
-      value: String(status.code),
+      value: String(status.label),
     })),
   ];
-  protected readonly reportDateRangeOptions: SelectOption[] = [
-    { label: 'Todos', value: '' },
-    { label: 'Últimos 7 días', value: 'ultimos_7_dias' },
-    { label: 'Entre 7 y 15 días', value: 'entre_7_y_15_dias' },
-    { label: 'Entre 15 y 20 días', value: 'entre_15_y_20_dias' },
-    { label: 'Más de 20 días', value: 'mas_de_20_dias' },
-  ];
-
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly dialog = inject(MatDialog);
-  private readonly ordersRepository = inject(OrdersRepository);
-  private readonly reload$ = new Subject<void>();
+  protected readonly reportDateRangeOptions = REPORT_DATE_RANGE_OPTIONS;
+  protected readonly followUpPresets = FOLLOW_UP_PRESETS;
+  private readonly defaultReportDateRange: ReportDateRangeValue = this.isFollowUpMode
+    ? 'guias_mayor_a_2_dias'
+    : '';
 
   protected readonly filtersForm: FiltersForm = new FormGroup({
     busqueda: new FormControl('', { nonNullable: true }),
     estatus: new FormControl('', { nonNullable: true }),
     plataforma: new FormControl('', { nonNullable: true }),
-    rangoFechaReporte: new FormControl('', { nonNullable: true }),
+    rangoFechaReporte: new FormControl(this.defaultReportDateRange, { nonNullable: true }),
     limit: new FormControl(String(DEFAULT_QUERY.limit), { nonNullable: true }),
   });
 
@@ -400,7 +535,7 @@ export class OrdersPageComponent {
           busqueda: query.busqueda,
           estatus: query.estatus,
           plataforma: query.plataforma,
-          rangoFechaReporte: query.rangoFechaReporte,
+          rangoFechaReporte: query.rangoFechaReporte as ReportDateRangeValue,
           limit: String(query.limit),
         },
         { emitEvent: false },
@@ -409,7 +544,17 @@ export class OrdersPageComponent {
   );
 
   protected readonly currentQuery = toSignal(this.query$, {
-    initialValue: DEFAULT_QUERY,
+    initialValue: {
+      ...DEFAULT_QUERY,
+      rangoFechaReporte: this.defaultReportDateRange,
+    },
+  });
+  protected readonly activeRangeLabel = computed(() => {
+    const option = this.reportDateRangeOptions.find(
+      (item) => item.value === this.currentQuery().rangoFechaReporte,
+    );
+
+    return option?.label ?? 'Todos';
   });
 
   protected readonly viewState = toSignal(
@@ -438,6 +583,7 @@ export class OrdersPageComponent {
     const state = this.viewState();
     return state?.status === 'success' ? state.data : null;
   });
+
   protected readonly errorMessage = computed(() => {
     const state = this.viewState();
     return state?.status === 'error' ? state.message : '';
@@ -474,7 +620,7 @@ export class OrdersPageComponent {
         busqueda: '',
         estatus: '',
         plataforma: '',
-        rangoFechaReporte: '',
+        rangoFechaReporte: this.defaultReportDateRange,
         limit: String(DEFAULT_QUERY.limit),
       },
       { emitEvent: false },
@@ -482,7 +628,27 @@ export class OrdersPageComponent {
 
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: this.serializeQuery(DEFAULT_QUERY),
+      queryParams: this.serializeQuery({
+        ...DEFAULT_QUERY,
+        rangoFechaReporte: this.defaultReportDateRange,
+      }),
+    });
+  }
+
+  protected selectFollowUpPreset(range: FollowUpPreset['value']): void {
+    const formValue = this.filtersForm.getRawValue();
+    this.filtersForm.controls.rangoFechaReporte.setValue(range, { emitEvent: false });
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.serializeQuery({
+        page: 1,
+        limit: Number(formValue.limit) || DEFAULT_QUERY.limit,
+        busqueda: formValue.busqueda.trim(),
+        estatus: formValue.estatus.trim(),
+        plataforma: formValue.plataforma.trim(),
+        rangoFechaReporte: range,
+      }),
     });
   }
 
@@ -608,9 +774,33 @@ export class OrdersPageComponent {
     return this.firstItemIndex() + data.rows.length - 1;
   }
 
+  protected async exportCurrentOrdersToCsv(): Promise<void> {
+    const data = this.ordersData();
+
+    if (!data?.rows.length || this.exportingCsv()) {
+      return;
+    }
+
+    this.exportingCsv.set(true);
+
+    try {
+      const rows = this.isFollowUpMode
+        ? await this.fetchAllRowsForCurrentFilters(data)
+        : data.rows;
+
+      this.downloadOrdersCsv(rows);
+    } finally {
+      this.exportingCsv.set(false);
+    }
+  }
+
   private parseQueryParams(params: ActivatedRoute['snapshot']['queryParamMap']): OrdersListQuery {
     const page = Number(params.get('page') ?? DEFAULT_QUERY.page);
     const limit = Number(params.get('limit') ?? DEFAULT_QUERY.limit);
+    const rawReportDateRange = params.get('rangoFechaReporte')?.trim() ?? this.defaultReportDateRange;
+    const rangoFechaReporte = REPORT_DATE_RANGE_VALUES.has(rawReportDateRange)
+      ? rawReportDateRange
+      : this.defaultReportDateRange;
 
     return {
       page: Number.isFinite(page) && page > 0 ? page : DEFAULT_QUERY.page,
@@ -618,7 +808,7 @@ export class OrdersPageComponent {
       estatus: params.get('estatus')?.trim() ?? '',
       busqueda: params.get('busqueda')?.trim() ?? '',
       plataforma: params.get('plataforma')?.trim() ?? '',
-      rangoFechaReporte: params.get('rangoFechaReporte')?.trim() ?? '',
+      rangoFechaReporte,
     };
   }
 
@@ -631,5 +821,85 @@ export class OrdersPageComponent {
       plataforma: query.plataforma || null,
       rangoFechaReporte: query.rangoFechaReporte || null,
     };
+  }
+
+  private async fetchAllRowsForCurrentFilters(initialData: OrdersListResponse): Promise<OrderRow[]> {
+    const rows = [...initialData.rows];
+
+    for (let page = 2; page <= initialData.totalPages; page += 1) {
+      const response = await firstValueFrom(
+        this.ordersRepository.list({
+          ...this.currentQuery(),
+          page,
+        }),
+      );
+
+      rows.push(...response.rows);
+    }
+
+    return rows;
+  }
+
+  private downloadOrdersCsv(rows: OrderRow[]): void {
+    const headers = [
+      'Id orden',
+      'Orden tienda',
+      'Cliente',
+      'Ciudad',
+      'Plataforma',
+      'Estatus',
+      'Total',
+      'Fecha reporte',
+      'Fecha creación',
+      'Guía',
+      'Transportadora',
+    ];
+    const csvRows = rows.map((row) => [
+      String(row.idOrden),
+      this.displayValue(row.idOrdenTienda),
+      this.displayValue(row.clienteNombre),
+      this.displayValue(row.ciudadNombre),
+      this.displayValue(row.plataforma),
+      row.estatus.label,
+      this.formatCurrency(row.totalOrden),
+      this.formatDate(row.fechaReporte),
+      this.formatDateTime(row.fechaCreacion),
+      this.displayValue(row.numeroGuia),
+      this.displayValue(row.transportadoraNombre),
+    ]);
+    const csvContent = [headers, ...csvRows]
+      .map((columns) => columns.map((value) => this.escapeCsvValue(value)).join(','))
+      .join('\n');
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+
+    link.href = downloadUrl;
+    link.download = this.buildOrdersCsvFileName();
+    link.style.display = 'none';
+
+    this.document.body.appendChild(link);
+    link.click();
+    this.document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  }
+
+  private escapeCsvValue(value: string): string {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  private buildOrdersCsvFileName(): string {
+    const timestamp = new Intl.DateTimeFormat('sv-SE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+      .format(new Date())
+      .replace(' ', '_')
+      .replace(':', '-');
+
+    return `ordenes-${timestamp}.csv`;
   }
 }

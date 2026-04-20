@@ -7,4 +7,12 @@ export const ORDERS_ROUTES: Routes = [
     title: 'Pedidos | PartnerShop',
     component: OrdersPageComponent,
   },
+  {
+    path: 'seguimiento',
+    title: 'Seguimiento de pedidos | PartnerShop',
+    component: OrdersPageComponent,
+    data: {
+      mode: 'followUp',
+    },
+  },
 ];

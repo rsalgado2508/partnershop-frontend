@@ -59,6 +59,7 @@ import { trackByKey } from '@shared/utils/track-by.util';
                     <a
                       class="ps-nav-item group relative text-white/68 hover:bg-white/8 hover:text-white"
                       routerLinkActive="ps-nav-item-active !bg-white/10 !text-white"
+                      [routerLinkActiveOptions]="{ exact: true }"
                       [routerLink]="child.route ?? '/'"
                       [title]="child.label"
                     >
@@ -82,6 +83,7 @@ import { trackByKey } from '@shared/utils/track-by.util';
               <a
                 class="ps-nav-item text-white/75 hover:bg-white/8 hover:text-white"
                 routerLinkActive="ps-nav-item-active !bg-white/10 !text-white"
+                [routerLinkActiveOptions]="{ exact: true }"
                 [routerLink]="item.route ?? item.children?.[0]?.route ?? '/'"
                 [title]="collapsed() ? item.label : ''"
               >

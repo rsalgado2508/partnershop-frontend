@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { BadgeComponent } from '@shared/ui/badge/badge.component';
@@ -8,7 +8,11 @@ import { EmptyStateComponent } from '@shared/ui/empty-state/empty-state.componen
 import { IconComponent } from '@shared/ui/icon/icon.component';
 import { SkeletonComponent } from '@shared/ui/skeleton/skeleton.component';
 import { Subject, catchError, map, of, startWith, switchMap } from 'rxjs';
-import { DailyFollowUpChartComponent } from './daily-follow-up-chart.component';
+import {
+  ChartSeriesKey,
+  DailyFollowUpChartComponent,
+  filterRowsBySeries,
+} from './daily-follow-up-chart.component';
 import { DailyFollowUpRepository } from '../data-access/daily-follow-up.repository';
 import { DailyFollowUpRow } from '../data-access/daily-follow-up.models';
 
@@ -22,6 +26,7 @@ interface KpiCard {
   value: string;
   caption: string;
   toneClass: string;
+  badgeLabel: string;
 }
 
 const INTEGER_FORMATTER = new Intl.NumberFormat('es-CO');
@@ -48,7 +53,7 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
         <div class="max-w-3xl">
           <div class="flex flex-wrap items-center gap-2">
             <ps-badge tone="brand">Seguimiento diario</ps-badge>
-            <ps-badge tone="mint">Backend conectado</ps-badge>
+            <!--ps-badge tone="mint">Backend conectado</ps-badge-->
           </div>
 
           <h3 class="mt-4 text-2xl font-extrabold tracking-[-0.04em] text-ink-950 md:text-[2.4rem]">
@@ -71,8 +76,8 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
 
       @switch (stateStatus()) {
         @case ('loading') {
-          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            @for (item of [1, 2, 3, 4]; track item) {
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            @for (item of [1, 2, 3, 4, 5]; track item) {
               <ps-card padding="sm">
                 <ps-skeleton width="42%" height="0.9rem" />
                 <div class="mt-4">
@@ -135,7 +140,7 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
 
         @case ('success') {
           @if (rows().length) {
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               @for (item of kpiCards(); track item.label) {
                 <ps-card padding="sm">
                   <div class="flex items-start justify-between gap-4">
@@ -148,7 +153,7 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                       </p>
                     </div>
                     <span class="rounded-2xl px-3 py-2 text-xs font-semibold" [class]="item.toneClass">
-                      Último día
+                      {{ item.badgeLabel }}
                     </span>
                   </div>
                   <p class="mt-3 text-sm text-ink-500">{{ item.caption }}</p>
@@ -166,8 +171,11 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                     Evolución del backlog operativo diario
                   </h4>
                   <p class="mt-2 text-sm text-ink-600">
-                    Serie principal de <span class="font-semibold text-ink-900">Guía gen/pendi &gt; 2 días</span>
-                    con línea de tendencia visual para leer dirección general.
+                    Visual consolidada con selector por rango para alternar entre
+                    <span class="font-semibold text-ink-900">Guía gen/pendi &gt; 2 días</span>,
+                    <span class="font-semibold text-ink-900">7 a 15 días</span>,
+                    <span class="font-semibold text-ink-900">15 a 20 días</span> y
+                    <span class="font-semibold text-ink-900">más de 20 días</span>.
                   </p>
                 </div>
 
@@ -180,7 +188,11 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
               </div>
 
               <div class="mt-6">
-                <ps-daily-follow-up-chart [rows]="rows()" />
+                <ps-daily-follow-up-chart
+                  [rows]="rows()"
+                  [selectedSeries]="selectedSeries()"
+                  (selectedSeriesChange)="selectedSeries.set($event)"
+                />
               </div>
             </ps-card>
 
@@ -195,7 +207,7 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                   </h4>
                 </div>
 
-                <ps-badge tone="neutral">{{ rows().length }} registros</ps-badge>
+                <ps-badge tone="neutral">{{ filteredRows().length }} registros</ps-badge>
               </div>
 
               <div class="mt-6 overflow-x-auto">
@@ -211,7 +223,7 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                   </thead>
 
                   <tbody>
-                    @for (row of rows(); track row.fechaSeguimiento) {
+                    @for (row of filteredRows(); track row.fechaSeguimiento) {
                       <tr class="transition-colors duration-200 hover:bg-brand-50/35">
                         <td class="border-b border-ink-100 px-4 py-4 text-sm font-semibold text-ink-900">
                           {{ row.fechaSeguimientoLabel }}
@@ -233,9 +245,6 @@ const DECIMAL_FORMATTER = new Intl.NumberFormat('es-CO', {
                         </td>
                         <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-medium tabular-nums text-ink-900">
                           {{ formatDecimal(row.promedio) }}
-                        </td>
-                        <td class="border-b border-ink-100 px-4 py-4 text-right text-sm font-semibold tabular-nums text-ink-950">
-                          {{ formatInteger(row.totalAcumulado) }}
                         </td>
                       </tr>
                     }
@@ -266,11 +275,11 @@ export class DailyFollowUpSectionComponent {
     'Guía gen/pendi > 2 días',
     'Más de 20',
     'Promedio',
-    'Total acumulado',
   ];
 
   private readonly repository = inject(DailyFollowUpRepository);
   private readonly reload$ = new Subject<void>();
+  protected readonly selectedSeries = signal<ChartSeriesKey>('guiasMayorA2Dias');
 
   protected readonly viewState = toSignal(
     this.reload$.pipe(
@@ -311,11 +320,14 @@ export class DailyFollowUpSectionComponent {
     const state = this.viewState();
     return state.status === 'error' ? state.message : '';
   });
+  protected readonly filteredRows = computed(() =>
+    filterRowsBySeries(this.rows(), this.selectedSeries()),
+  );
   protected readonly dateRangeLabel = computed(() => {
-    const rows = this.rows();
+    const rows = this.filteredRows();
 
     if (!rows.length) {
-      return '';
+      return 'Sin datos';
     }
 
     const first = rows[0];
@@ -324,36 +336,54 @@ export class DailyFollowUpSectionComponent {
     return `${first.fechaSeguimientoLabel} al ${last.fechaSeguimientoLabel}`;
   });
   protected readonly kpiCards = computed<KpiCard[]>(() => {
-    const latest = this.latestRow();
+    const rows = this.rows();
 
-    if (!latest) {
+    if (!rows.length) {
       return [];
     }
+
+    const totalGuiasMayorA2Dias = rows.reduce((sum, row) => sum + row.totalGuiasMayorA2Dias, 0);
+    const totalEntre7y15 = rows.reduce((sum, row) => sum + row.totalEntre7y15, 0);
+    const totalEntre15y20 = rows.reduce((sum, row) => sum + row.totalEntre15y20, 0);
+    const totalMayorA20 = rows.reduce((sum, row) => sum + row.totalMayorA20, 0);
+    const promedioPeriodo =
+      rows.reduce((sum, row) => sum + row.promedio, 0) / rows.length;
 
     return [
       {
         label: 'Guía gen/pendi > 2 días',
-        value: this.formatInteger(latest.totalGuiasMayorA2Dias),
-        caption: 'Valor más reciente del seguimiento operativo crítico.',
+        value: this.formatInteger(totalGuiasMayorA2Dias),
+        caption: 'Sumatoria acumulada del período analizado.',
         toneClass: 'bg-brand-100 text-brand-800',
+        badgeLabel: 'Acumulado',
+      },
+      {
+        label: '7 a 15 días',
+        value: this.formatInteger(totalEntre7y15),
+        caption: 'Sumatoria acumulada dentro del rango intermedio inicial.',
+        toneClass: 'bg-ink-100 text-ink-700',
+        badgeLabel: 'Acumulado',
+      },
+      {
+        label: '15 a 20 días',
+        value: this.formatInteger(totalEntre15y20),
+        caption: 'Sumatoria acumulada cercana al umbral de mayor antigüedad.',
+        toneClass: 'bg-mint-100 text-mint-800',
+        badgeLabel: 'Acumulado',
       },
       {
         label: 'Más de 20 días',
-        value: this.formatInteger(latest.totalMayorA20),
-        caption: 'Órdenes acumuladas con mayor antigüedad.',
+        value: this.formatInteger(totalMayorA20),
+        caption: 'Sumatoria acumulada con mayor antigüedad.',
         toneClass: 'bg-gold-100 text-gold-800',
+        badgeLabel: 'Acumulado',
       },
       {
         label: 'Promedio',
-        value: this.formatDecimal(latest.promedio),
-        caption: 'Promedio consolidado del último corte disponible.',
+        value: this.formatDecimal(promedioPeriodo),
+        caption: 'Promedio consolidado del período analizado.',
         toneClass: 'bg-mint-100 text-mint-800',
-      },
-      {
-        label: 'Total acumulado',
-        value: this.formatInteger(latest.totalAcumulado),
-        caption: 'Volumen agregado reportado en la fecha más reciente.',
-        toneClass: 'bg-ink-100 text-ink-700',
+        badgeLabel: 'Periodo',
       },
     ];
   });

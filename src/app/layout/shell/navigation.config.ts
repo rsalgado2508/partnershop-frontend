@@ -16,6 +16,13 @@ export const SHELL_NAVIGATION: NavigationItem[] = [
     route: '/orders'
   },
   {
+    id: 'ordersFollowUp',
+    label: 'Pedidos seguimiento',
+    description: 'Prefiltrados por rango',
+    icon: 'chart',
+    route: '/orders/seguimiento',
+  },
+  {
     id: 'users',
     label: 'Aliados',
     description: 'Usuarios y roles',

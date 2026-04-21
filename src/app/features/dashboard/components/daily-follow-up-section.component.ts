@@ -193,7 +193,7 @@ function dateRangeValidator(): ValidatorFn {
             </div>
             
             <form class="ps-filter-bar" [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
-              <div class="grid gap-4 lg:grid-cols-[220px_220px_auto_auto]">
+              <div class="grid gap-4 lg:grid-cols-[220px_220px_max-content_max-content]">
                 <ps-input
                   label="Fecha inicio"
                   type="date"
@@ -208,11 +208,11 @@ function dateRangeValidator(): ValidatorFn {
                   hint="Fecha final del rango."
                 />
 
-                <div class="flex items-end">
+                <div class="flex pt-7">
                   <ps-button type="submit" [disabled]="filtersForm.invalid">Aplicar rango</ps-button>
                 </div>
 
-                <div class="flex items-end">
+                <div class="flex pt-7">
                   <ps-button type="button" variant="ghost" (click)="clearFilters()">Limpiar</ps-button>
                 </div>
               </div>
@@ -295,13 +295,13 @@ function dateRangeValidator(): ValidatorFn {
                           {{ row.diaSeguimientoLabel }}
                         </td>
                         <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
-                          {{ formatInteger(row.totalEntre15y20) }}
+                          {{ formatInteger(row.totalGuiasMayorA2Dias) }}
                         </td>
                         <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalEntre7y15) }}
                         </td>
                         <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
-                          {{ formatInteger(row.totalGuiasMayorA2Dias) }}
+                          {{ formatInteger(row.totalEntre15y20) }}
                         </td>
                         <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalMayorA20) }}
@@ -405,9 +405,9 @@ export class DailyFollowUpSectionComponent {
   protected readonly tableColumns = [
     'Fecha de seguimiento',
     'Día de seguimiento',
-    '15-20 días',
-    '7-15 días',
     'Guía gen/pendi > 2 días',
+    '7-15 días',
+    '15-20 días',
     'Más de 20',
   ];
 
@@ -526,8 +526,7 @@ export class DailyFollowUpSectionComponent {
     const totalEntre7y15 = rows.reduce((sum, row) => sum + row.totalEntre7y15, 0);
     const totalEntre15y20 = rows.reduce((sum, row) => sum + row.totalEntre15y20, 0);
     const totalMayorA20 = rows.reduce((sum, row) => sum + row.totalMayorA20, 0);
-    const promedioPeriodo =
-      rows.reduce((sum, row) => sum + row.promedio, 0) / rows.length;
+    const sumaOrdenesTotales = rows.reduce((sum, row) => sum + row.totalAcumulado, 0);
 
     return [
       {
@@ -559,11 +558,11 @@ export class DailyFollowUpSectionComponent {
         badgeLabel: 'Acumulado',
       },
       {
-        label: 'Promedio',
-        value: this.formatDecimal(promedioPeriodo),
-        caption: 'Promedio consolidado del período analizado.',
+        label: 'Suma de órdenes totales',
+        value: this.formatInteger(sumaOrdenesTotales),
+        caption: 'Suma consolidada de órdenes del período analizado.',
         toneClass: 'bg-mint-100 text-mint-800',
-        badgeLabel: 'Periodo',
+        badgeLabel: 'Total',
       },
     ];
   });

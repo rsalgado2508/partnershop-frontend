@@ -105,3 +105,6 @@ La app queda disponible en `http://localhost:4200`.
 - El backend devuelve los registros en `data.data` y la paginación en `data.total`, `data.page`, `data.limit`, `data.totalPages`; la pantalla ya consume esa estructura.
 - Los `null` se muestran como `—`.
 - El mapeo de `estatus` es temporal y visual; queda listo para sustituirse por catálogo real sin tocar la tabla.
+
+## Comando para desplegar el frontend:
+aws s3 sync dist/partnershop-frontend/browser/ s3://web.admin.partnershopcol.com --delete --profile partnershop && aws cloudfront create-invalidation --distribution-id E2N0R47PIMPSRT --paths "/*" --profile partnershop

@@ -106,5 +106,8 @@ La app queda disponible en `http://localhost:4200`.
 - Los `null` se muestran como `—`.
 - El mapeo de `estatus` es temporal y visual; queda listo para sustituirse por catálogo real sin tocar la tabla.
 
+## Comando para compilar la versión productiva
+npx ng build --configuration production
+
 ## Comando para desplegar el frontend:
 aws s3 sync dist/partnershop-frontend/browser/ s3://web.admin.partnershopcol.com --delete --profile partnershop && aws cloudfront create-invalidation --distribution-id E2N0R47PIMPSRT --paths "/*" --profile partnershop

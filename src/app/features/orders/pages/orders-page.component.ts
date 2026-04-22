@@ -345,9 +345,10 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                   <table class="ps-data-table">
                     <thead>
                       <tr>
-                        <th>Id orden</th>
                         <th>Orden tienda</th>
                         <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Categoría Comentario</th>
                         <th>Ciudad</th>
                         <th>Plataforma</th>
                         <th>Estatus</th>
@@ -361,9 +362,10 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                     <tbody>
                       @for (row of ordersData()?.rows ?? []; track row.idOrden) {
                         <tr>
-                          <td class="font-semibold text-ink-950">{{ row.idOrden }}</td>
-                          <td>{{ displayValue(row.idOrdenTienda) }}</td>
+                          <td class="font-semibold text-ink-950">{{ displayValue(row.idOrdenTienda) }}</td>
                           <td>{{ displayValue(row.clienteNombre) }}</td>
+                          <td>{{ getProductNames(row) }}</td>
+                          <td>{{ displayValue(row.novedadCategoriaNombre) }}</td>
                           <td>{{ displayValue(row.ciudadNombre) }}</td>
                           <td>{{ displayValue(row.plataforma) }}</td>
                           <td>
@@ -500,8 +502,8 @@ export class OrdersPageComponent {
   protected readonly statusOptions: SelectOption[] = [
     { label: 'Todos', value: '' },
     ...ORDER_STATUS_CATALOG.map((status) => ({
-      label: `${status.code} · ${status.label}`,
-      value: String(status.label),
+      label: status.label,
+      value: status.code,
     })),
   ];
   protected readonly reportDateRangeOptions = REPORT_DATE_RANGE_OPTIONS;
@@ -553,6 +555,7 @@ export class OrdersPageComponent {
     combineLatest([this.query$, this.reload$.pipe(startWith(undefined))]).pipe(
       switchMap(([query]) =>
         this.ordersRepository.list(query).pipe(
+          tap((data) => {console.log(data)}),
           map((data): OrdersViewState => ({ status: 'success', data })),
           startWith({ status: 'loading' } as OrdersViewState),
           catchError(() =>
@@ -713,6 +716,14 @@ export class OrdersPageComponent {
     return value?.trim() ? value : '—';
   }
 
+  protected getProductNames(row: OrderRow): string {
+    const names = row.detalles
+      .map((detail) => detail.producto?.nombreOficial?.trim() ?? '')
+      .filter((name) => !!name);
+
+    return names.length ? names.join(', ') : '—';
+  }
+
   protected formatCurrency(value: number | null): string {
     if (value === null) {
       return '—';
@@ -837,6 +848,8 @@ export class OrdersPageComponent {
       'Id orden',
       'Orden tienda',
       'Cliente',
+      'Producto',
+      'Categoría comentario',
       'Ciudad',
       'Plataforma',
       'Estatus',
@@ -850,6 +863,8 @@ export class OrdersPageComponent {
       String(row.idOrden),
       this.displayValue(row.idOrdenTienda),
       this.displayValue(row.clienteNombre),
+      this.getProductNames(row),
+      this.displayValue(row.novedadCategoriaNombre),
       this.displayValue(row.ciudadNombre),
       this.displayValue(row.plataforma),
       row.estatus.label,

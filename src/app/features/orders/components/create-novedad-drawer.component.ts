@@ -502,6 +502,7 @@ export class CreateNovedadDrawerComponent {
     { label: 'ID de orden', value: String(this.order.idOrden) },
     { label: 'Número de orden / tienda', value: this.displayValue(this.order.idOrdenTienda) },
     { label: 'Cliente', value: this.displayValue(this.order.clienteNombre) },
+    { label: 'Producto', value: this.getProductNames() },
     { label: 'Ciudad', value: this.displayValue(this.order.ciudadNombre) },
     { label: 'Plataforma', value: this.displayValue(this.order.plataforma) },
     { label: 'Estado actual', value: this.order.estatus.label },
@@ -634,6 +635,14 @@ export class CreateNovedadDrawerComponent {
 
   protected displayValue(value: string | null): string {
     return value?.trim() ? value : '—';
+  }
+
+  protected getProductNames(): string {
+    const names = this.order.detalles
+      .map((detail) => detail.producto?.nombreOficial?.trim() ?? '')
+      .filter((name) => !!name);
+
+    return names.length ? names.join(', ') : '—';
   }
 
   protected formatCurrency(value: number | null): string {

@@ -9,7 +9,7 @@ import { EmptyStateComponent } from '@shared/ui/empty-state/empty-state.componen
 import { IconComponent } from '@shared/ui/icon/icon.component';
 import { InputComponent } from '@shared/ui/input/input.component';
 import { SkeletonComponent } from '@shared/ui/skeleton/skeleton.component';
-import { Subject, catchError, map, of, startWith, switchMap } from 'rxjs';
+import { Subject, catchError, map, of, startWith, switchMap, tap } from 'rxjs';
 import {
   ChartSeriesKey,
   DailyFollowUpChartComponent,
@@ -231,7 +231,7 @@ function dateRangeValidator(): ValidatorFn {
                     Gráfica de tendencia
                   </p>
                   <h4 class="mt-2 text-xl font-bold tracking-[-0.03em] text-ink-950">
-                    Evolución del backlog operativo diario
+                    Evolución del órdenes por temporalidad
                   </h4>
                   <p class="mt-2 text-sm text-ink-600">
                     Visual consolidada con selector por rango para alternar entre
@@ -432,6 +432,7 @@ export class DailyFollowUpSectionComponent {
       startWith(undefined),
       switchMap(() =>
         this.repository.list(this.filtersState()).pipe(
+          //tap((data) => console.log('DailyFollowUp endpoint response:', data)),
           map((data): DailyFollowUpViewState => ({ status: 'success', data })),
           startWith({ status: 'loading' } as DailyFollowUpViewState),
           catchError((error: unknown) => {
@@ -522,11 +523,12 @@ export class DailyFollowUpSectionComponent {
       return [];
     }
 
-    const totalGuiasMayorA2Dias = rows.reduce((sum, row) => sum + row.totalGuiasMayorA2Dias, 0);
-    const totalEntre7y15 = rows.reduce((sum, row) => sum + row.totalEntre7y15, 0);
-    const totalEntre15y20 = rows.reduce((sum, row) => sum + row.totalEntre15y20, 0);
-    const totalMayorA20 = rows.reduce((sum, row) => sum + row.totalMayorA20, 0);
-    const sumaOrdenesTotales = rows.reduce((sum, row) => sum + row.totalAcumulado, 0);
+    const latestRow = rows[rows.length - 1];
+    const totalGuiasMayorA2Dias = latestRow.totalGuiasMayorA2Dias;
+    const totalEntre7y15 = latestRow.totalEntre7y15;
+    const totalEntre15y20 = latestRow.totalEntre15y20;
+    const totalMayorA20 = latestRow.totalMayorA20;
+    const sumaOrdenesTotales = latestRow.totalAcumulado;
 
     return [
       {

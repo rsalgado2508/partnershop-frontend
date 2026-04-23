@@ -274,7 +274,7 @@ function dateRangeValidator(): ValidatorFn {
               </div>
 
               <div class="mt-6 overflow-x-auto">
-                <table class="min-w-[920px] w-full border-separate border-spacing-0">
+                <table class="min-w-[1040px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr>
                       @for (column of tableColumns; track column) {
@@ -305,6 +305,9 @@ function dateRangeValidator(): ValidatorFn {
                         </td>
                         <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-medium tabular-nums text-ink-900">
                           {{ formatInteger(row.totalMayorA20) }}
+                        </td>
+                        <td class="border-b border-ink-100 px-4 py-4 text-center text-sm font-bold tabular-nums text-ink-950">
+                          {{ formatInteger(getRowTotal(row)) }}
                         </td>
                       </tr>
                     }
@@ -409,6 +412,7 @@ export class DailyFollowUpSectionComponent {
     '7-15 días',
     '15-20 días',
     'Más de 20',
+    'Total de registros',
   ];
 
   private readonly repository = inject(DailyFollowUpRepository);
@@ -609,5 +613,14 @@ export class DailyFollowUpSectionComponent {
 
   protected formatDecimal(value: number): string {
     return DECIMAL_FORMATTER.format(value);
+  }
+
+  protected getRowTotal(row: DailyFollowUpRow): number {
+    return (
+      row.totalGuiasMayorA2Dias +
+      row.totalEntre7y15 +
+      row.totalEntre15y20 +
+      row.totalMayorA20
+    );
   }
 }

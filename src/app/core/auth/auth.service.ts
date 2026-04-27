@@ -22,6 +22,8 @@ export class AuthService {
   private readonly storageKey = 'partnershop.auth.session';
   private readonly pkceVerifierKey = 'partnershop.auth.pkce.verifier';
   private readonly pkceStateKey = 'partnershop.auth.pkce.state';
+  private readonly tokenRefreshSkewMs = 60_000;
+  private refreshPromise: Promise<string | null> | null = null;
 
   readonly isAuthenticated = computed(() => this.session() !== null);
   readonly roles = computed(() => this.session()?.roles ?? []);
@@ -41,6 +43,31 @@ export class AuthService {
   setSession(session: AuthSession | null): void {
     this.session.set(session);
     this.persistSession(session);
+  }
+
+  async getValidAccessToken(): Promise<string | null> {
+    const currentSession = this.session();
+
+    if (!currentSession) {
+      return null;
+    }
+
+    if (currentSession.expiresAt > Date.now() + this.tokenRefreshSkewMs) {
+      return currentSession.accessToken;
+    }
+
+    if (!currentSession.refreshToken) {
+      this.setSession(null);
+      return null;
+    }
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.refreshAccessToken(currentSession).finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+
+    return this.refreshPromise;
   }
 
   async loginWithCognito(): Promise<void> {
@@ -66,7 +93,7 @@ export class AuthService {
     authorizeUrl.searchParams.set('code_challenge', challenge);
     authorizeUrl.searchParams.set('state', state);
 
-    window.location.assign(authorizeUrl.toString());
+    this.redirectTo(authorizeUrl.toString());
   }
 
   async handleAuthorizationCallback(code: string, state: string | null): Promise<void> {
@@ -126,7 +153,7 @@ export class AuthService {
     const logoutUrl = new URL('/logout', environment.cognito.domain);
     logoutUrl.searchParams.set('client_id', environment.cognito.clientId);
     logoutUrl.searchParams.set('logout_uri', environment.cognito.logoutUri);
-    window.location.assign(logoutUrl.toString());
+    this.redirectTo(logoutUrl.toString());
   }
 
   hasAnyRole(expectedRoles: string[]): boolean {
@@ -136,6 +163,58 @@ export class AuthService {
 
     const userRoles = this.roles();
     return expectedRoles.some((role) => userRoles.includes(role));
+  }
+
+  private async refreshAccessToken(currentSession: AuthSession): Promise<string | null> {
+    this.assertCognitoConfig();
+
+    const tokenUrl = new URL('/oauth2/token', environment.cognito.domain).toString();
+    const body = new HttpParams()
+      .set('grant_type', 'refresh_token')
+      .set('client_id', environment.cognito.clientId)
+      .set('refresh_token', currentSession.refreshToken ?? '');
+
+    try {
+      const tokenResponse = await firstValueFrom(
+        this.http.post<CognitoTokenResponse>(tokenUrl, body.toString(), {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }),
+      );
+
+      const payload = this.decodeJwtPayload(tokenResponse.id_token ?? tokenResponse.access_token);
+      const groups = this.extractGroups(payload);
+      const roles = groups.length ? this.normalizeRoles(groups) : currentSession.roles;
+      const user =
+        groups.length || payload['email'] || payload['name']
+          ? this.buildAuthenticatedUser({
+              email: String(payload['email'] ?? currentSession.user.email),
+              name: String(
+                payload['name'] ?? currentSession.user.name ?? currentSession.user.email,
+              ),
+              roles,
+              groups: groups.length ? groups : (currentSession.groups ?? []),
+            })
+          : currentSession.user;
+
+      const nextSession: AuthSession = {
+        ...currentSession,
+        accessToken: tokenResponse.access_token,
+        idToken: tokenResponse.id_token ?? currentSession.idToken,
+        refreshToken: tokenResponse.refresh_token ?? currentSession.refreshToken,
+        expiresAt: Date.now() + tokenResponse.expires_in * 1000,
+        roles,
+        groups: groups.length ? groups : currentSession.groups,
+        user,
+      };
+
+      this.setSession(nextSession);
+      return nextSession.accessToken;
+    } catch {
+      this.setSession(null);
+      return null;
+    }
   }
 
   private restoreSession(): void {
@@ -174,6 +253,10 @@ export class AuthService {
         'Falta configurar el dominio Hosted UI final de Cognito en environments para activar el flujo real.',
       );
     }
+  }
+
+  private redirectTo(url: string): void {
+    window.location.assign(url);
   }
 
   private extractGroups(payload: Record<string, unknown>): string[] {

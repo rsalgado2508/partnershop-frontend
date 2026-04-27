@@ -9,7 +9,7 @@ import { EmptyStateComponent } from '@shared/ui/empty-state/empty-state.componen
 import { IconComponent } from '@shared/ui/icon/icon.component';
 import { InputComponent } from '@shared/ui/input/input.component';
 import { SkeletonComponent } from '@shared/ui/skeleton/skeleton.component';
-import { Subject, catchError, map, of, startWith, switchMap, tap } from 'rxjs';
+import { Subject, catchError, map, of, startWith, switchMap } from 'rxjs';
 import {
   ChartSeriesKey,
   DailyFollowUpChartComponent,

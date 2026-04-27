@@ -467,7 +467,7 @@ export class CreateNovedadDrawerComponent {
             of({
               status: 'error',
               message:
-                'No se pudieron cargar las categorías de novedad. Verifica que el backend local esté activo en http://localhost:3000.',
+                'No se pudieron cargar las categorías de novedad. Por favor contacta al administrador o intenta nuevamente.',
             } as CategoriesViewState),
           ),
         ),

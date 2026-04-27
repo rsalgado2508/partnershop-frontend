@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  TestRequest,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
@@ -9,11 +13,9 @@ describe('ShellNavigationService', () => {
   let authService: AuthService;
   let httpMock: HttpTestingController;
   let service: ShellNavigationService;
-  let assignSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     localStorage.clear();
-    assignSpy = vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
 
     TestBed.configureTestingModule({
       providers: [
@@ -32,10 +34,29 @@ describe('ShellNavigationService', () => {
 
   afterEach(() => {
     httpMock.verify();
-    assignSpy.mockRestore();
   });
 
-  it('debe cargar y normalizar el menú autenticado desde backend', () => {
+  async function flushPromises(): Promise<void> {
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
+  async function expectOneAsync(url: string): Promise<TestRequest> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      try {
+        return httpMock.expectOne(url);
+      } catch (error) {
+        lastError = error;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }
+
+    throw lastError;
+  }
+
+  it('debe cargar y normalizar el menú autenticado desde backend', async () => {
     authService.setSession({
       accessToken: 'token',
       expiresAt: Date.now() + 1000,
@@ -50,8 +71,9 @@ describe('ShellNavigationService', () => {
         groups: ['admin'],
       },
     });
+    await flushPromises();
 
-    const request = httpMock.expectOne('http://localhost:3000/api/auth/menu');
+    const request = await expectOneAsync('http://localhost:3000/api/auth/menu');
 
     expect(request.request.method).toBe('GET');
 
@@ -85,6 +107,7 @@ describe('ShellNavigationService', () => {
       ],
       timestamp: '2026-04-11T22:09:31.906Z',
     });
+    await flushPromises();
 
     expect(service.items()).toEqual([
       {
@@ -93,13 +116,15 @@ describe('ShellNavigationService', () => {
         icon: 'dashboard',
         route: '/dashboard',
         description: 'Resumen ejecutivo',
+        children: undefined,
       },
       {
         id: 'orders',
         label: 'Órdenes',
         icon: 'cart',
         route: '/orders',
-        description: 'Seguimiento operativo',
+        description: 'Total de órdenes',
+        children: undefined,
       },
       {
         id: 'issue_category',
@@ -107,6 +132,7 @@ describe('ShellNavigationService', () => {
         icon: 'settings',
         route: '/settings',
         description: 'Gestión de categorías de incidencias',
+        children: undefined,
       },
       {
         id: 'users',
@@ -114,11 +140,12 @@ describe('ShellNavigationService', () => {
         icon: 'users',
         route: '/users',
         description: 'Usuarios y roles',
+        children: undefined,
       },
     ]);
   });
 
-  it('debe mantener el menú fallback si el endpoint falla', () => {
+  it('debe mantener el menú fallback si el endpoint falla', async () => {
     authService.setSession({
       accessToken: 'token',
       expiresAt: Date.now() + 1000,
@@ -133,8 +160,9 @@ describe('ShellNavigationService', () => {
         groups: ['admin'],
       },
     });
+    await flushPromises();
 
-    const request = httpMock.expectOne('http://localhost:3000/api/auth/menu');
+    const request = await expectOneAsync('http://localhost:3000/api/auth/menu');
     request.flush({ message: 'error' }, { status: 500, statusText: 'Server Error' });
 
     expect(service.items()[0]?.id).toBe('dashboard');

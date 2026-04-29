@@ -79,6 +79,14 @@ const REPORT_DATE_RANGE_OPTIONS: SelectOption[] = [
   { label: 'Más de 20 días', value: 'mas_de_20_dias' },
 ];
 
+const PLATFORM_OPTIONS: SelectOption[] = [
+  { label: 'Todos', value: '' },
+  { label: 'Venta Directa', value: 'Venta Directa' },
+  { label: 'Dropi', value: 'Dropi' },
+  { label: 'Venndelo', value: 'Venndelo' },
+  { label: 'Enviosexito', value: 'Enviosexito' },
+];
+
 const REPORT_DATE_RANGE_VALUES = new Set(
   REPORT_DATE_RANGE_OPTIONS.map((option) => option.value),
 );
@@ -223,11 +231,11 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             hint="Mapeo temporal sobre códigos numéricos."
           />
 
-          <ps-input
+          <ps-select
             label="Plataforma"
-            placeholder="Ej. Enviosexito"
             icon="box"
             formControlName="plataforma"
+            [options]="platformOptions"
             hint="Filtro directo por plataforma."
           />
 
@@ -354,6 +362,7 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                         <th>Estatus</th>
                         <th>Total</th>
                         <th>Fecha reporte</th>
+                        <th>Días abierto</th>
                         <th>Guía</th>
                         <th>Transportadora</th>
                         <th>Acción</th>
@@ -373,6 +382,7 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                           </td>
                           <td>{{ formatCurrency(row.totalOrden) }}</td>
                           <td>{{ formatDate(row.fechaReporte) }}</td>
+                          <td>{{ formatOpenDays(row.fechaReporte) }}</td>
                           <td>{{ displayValue(row.numeroGuia) }}</td>
                           <td>{{ displayValue(row.transportadoraNombre) }}</td>
                           <td>
@@ -487,6 +497,7 @@ export class OrdersPageComponent {
     'Estatus',
     'Total',
     'Fecha reporte',
+    'Días abierto',
     'Fecha creación',
     'Guía',
     'Transportadora',
@@ -506,6 +517,7 @@ export class OrdersPageComponent {
       value: status.code,
     })),
   ];
+  protected readonly platformOptions = PLATFORM_OPTIONS;
   protected readonly reportDateRangeOptions = REPORT_DATE_RANGE_OPTIONS;
   protected readonly followUpPresets = FOLLOW_UP_PRESETS;
   private readonly defaultReportDateRange: ReportDateRangeValue = this.isFollowUpMode
@@ -746,6 +758,16 @@ export class OrdersPageComponent {
     }).format(new Date(value));
   }
 
+  protected formatOpenDays(value: string | null): string {
+    const days = this.calculateOpenDays(value);
+
+    if (days === null) {
+      return '—';
+    }
+
+    return `${days} ${days === 1 ? 'día' : 'días'}`;
+  }
+
   protected formatDateTime(value: string | null): string {
     if (!value) {
       return '—';
@@ -855,6 +877,7 @@ export class OrdersPageComponent {
       'Estatus',
       'Total',
       'Fecha reporte',
+      'Días abierto',
       'Fecha creación',
       'Guía',
       'Transportadora',
@@ -870,6 +893,7 @@ export class OrdersPageComponent {
       row.estatus.label,
       this.formatCurrency(row.totalOrden),
       this.formatDate(row.fechaReporte),
+      this.formatOpenDays(row.fechaReporte),
       this.formatDateTime(row.fechaCreacion),
       this.displayValue(row.numeroGuia),
       this.displayValue(row.transportadoraNombre),
@@ -893,6 +917,29 @@ export class OrdersPageComponent {
 
   private escapeCsvValue(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  private calculateOpenDays(value: string | null): number | null {
+    if (!value) {
+      return null;
+    }
+
+    const reportDate = new Date(value);
+
+    if (Number.isNaN(reportDate.getTime())) {
+      return null;
+    }
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const reportDateStart = new Date(
+      reportDate.getFullYear(),
+      reportDate.getMonth(),
+      reportDate.getDate(),
+    ).getTime();
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+    return Math.max(0, Math.floor((todayStart - reportDateStart) / millisecondsPerDay));
   }
 
   private buildOrdersCsvFileName(): string {

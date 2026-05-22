@@ -229,7 +229,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             placeholder="Número de orden, orden tienda o guía"
             icon="search"
             formControlName="busqueda"
-            hint="Usa el parámetro busqueda del backend."
           />
 
           <ps-select
@@ -237,7 +236,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             icon="panel"
             formControlName="estatus"
             [options]="statusOptions"
-            hint="Mapeo temporal sobre códigos numéricos."
           />
 
           <ps-select
@@ -245,7 +243,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             icon="box"
             formControlName="plataforma"
             [options]="platformOptions"
-            hint="Filtro directo por plataforma."
           />
 
           <ps-select
@@ -253,15 +250,6 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             icon="panel"
             formControlName="idCategoriaNovedad"
             [options]="categoryOptions()"
-            hint="Categoría de la última novedad."
-          />
-
-          <ps-select
-            label="Transportadora"
-            icon="box"
-            formControlName="transportadora"
-            [options]="transportadoraOptions()"
-            hint="Catálogo de transportadoras."
           />
 
           <ps-input
@@ -276,6 +264,13 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             type="date"
             icon="calendar"
             formControlName="fechaReporteHasta"
+          />
+
+          <ps-select
+            label="Transportadora"
+            icon="box"
+            formControlName="transportadora"
+            [options]="transportadoraOptions()"
           />
 
           @if (!isFollowUpMode) {

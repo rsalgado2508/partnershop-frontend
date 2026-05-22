@@ -295,12 +295,9 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             [options]="pageSizeOptions"
           />
 
-          <div class="flex pt-7">
-            <ps-button type="submit" [block]="true">Aplicar filtros</ps-button>
-          </div>
-
-          <div class="flex pt-7">
-            <ps-button type="button" variant="ghost" [block]="true" (click)="clearFilters()">
+          <div class="flex items-end gap-3 md:col-span-2 xl:col-span-2 2xl:col-span-2">
+            <ps-button type="submit">Aplicar filtros</ps-button>
+            <ps-button type="button" variant="secondary" (click)="clearFilters()">
               Limpiar
             </ps-button>
           </div>

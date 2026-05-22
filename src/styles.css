@@ -266,7 +266,9 @@
   }
 
   .ps-filter-bar {
-    @apply rounded-[1.6rem] border border-white/75 bg-white/88 p-4 shadow-[0_18px_44px_-30px_rgba(15,35,65,0.18)];
+    @apply rounded-[1.6rem] border border-ink-200/85 bg-white/92 p-5 shadow-[0_20px_48px_-32px_rgba(15,35,65,0.24)];
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.92));
   }
 
   .ps-data-table {

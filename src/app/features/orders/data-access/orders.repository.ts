@@ -2,9 +2,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { API_BASE_URL } from '@core/http/api.config';
 import { Observable, map } from 'rxjs';
-import { OrdersApiEnvelope } from './orders-api.models';
+import { OrdersApiEnvelope, TransportadorasApiEnvelope } from './orders-api.models';
 import { mapOrdersResponse } from './orders.mapper';
-import { OrdersListQuery, OrdersListResponse } from './orders.models';
+import { OrdersListQuery, OrdersListResponse, TransportadoraOption } from './orders.models';
 
 @Injectable({
   providedIn: 'root',
@@ -30,6 +30,22 @@ export class OrdersRepository {
       params = params.set('plataforma', query.plataforma);
     }
 
+    if (query.idCategoriaNovedad) {
+      params = params.set('idCategoriaNovedad', query.idCategoriaNovedad);
+    }
+
+    if (query.transportadora) {
+      params = params.set('transportadora', query.transportadora);
+    }
+
+    if (query.fechaReporteDesde) {
+      params = params.set('fechaReporteDesde', query.fechaReporteDesde);
+    }
+
+    if (query.fechaReporteHasta) {
+      params = params.set('fechaReporteHasta', query.fechaReporteHasta);
+    }
+
     if (query.rangoFechaReporte) {
       params = params.set('rangoFechaReporte', query.rangoFechaReporte);
     }
@@ -37,5 +53,11 @@ export class OrdersRepository {
     return this.http
       .get<OrdersApiEnvelope>(`${this.apiBaseUrl}/ordenes`, { params })
       .pipe(map(mapOrdersResponse));
+  }
+
+  listTransportadoras(): Observable<TransportadoraOption[]> {
+    return this.http
+      .get<TransportadorasApiEnvelope>(`${this.apiBaseUrl}/ordenes/transportadoras`)
+      .pipe(map((response) => response.data));
   }
 }

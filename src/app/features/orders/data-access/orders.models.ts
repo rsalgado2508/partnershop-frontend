@@ -4,6 +4,10 @@ export interface OrdersListQuery {
   estatus: string;
   busqueda: string;
   plataforma: string;
+  idCategoriaNovedad: string;
+  transportadora: string;
+  fechaReporteDesde: string;
+  fechaReporteHasta: string;
   rangoFechaReporte: string;
 }
 
@@ -13,6 +17,11 @@ export interface OrdersListResponse {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface TransportadoraOption {
+  idTransportadora: number;
+  nombre: string | null;
 }
 
 export interface OrderRow {

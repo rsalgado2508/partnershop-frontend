@@ -27,6 +27,7 @@ import {
   CreateNovedadDrawerComponent,
   OrderNovedadDrawerData,
 } from '../components/create-novedad-drawer.component';
+import { OrderNovedadRepository } from '../data-access/order-novedad.repository';
 import { ORDER_STATUS_CATALOG } from '../data-access/orders-status.catalog';
 import { OrdersRepository } from '../data-access/orders.repository';
 import { OrderRow, OrdersListQuery, OrdersListResponse } from '../data-access/orders.models';
@@ -40,6 +41,10 @@ type FiltersForm = FormGroup<{
   busqueda: FormControl<string>;
   estatus: FormControl<string>;
   plataforma: FormControl<string>;
+  idCategoriaNovedad: FormControl<string>;
+  transportadora: FormControl<string>;
+  fechaReporteDesde: FormControl<string>;
+  fechaReporteHasta: FormControl<string>;
   rangoFechaReporte: FormControl<ReportDateRangeValue>;
   limit: FormControl<string>;
 }>;
@@ -67,6 +72,10 @@ const DEFAULT_QUERY: OrdersListQuery = {
   busqueda: '',
   estatus: '',
   plataforma: '',
+  idCategoriaNovedad: '',
+  transportadora: '',
+  fechaReporteDesde: '',
+  fechaReporteHasta: '',
   rangoFechaReporte: '',
 };
 
@@ -237,6 +246,36 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             formControlName="plataforma"
             [options]="platformOptions"
             hint="Filtro directo por plataforma."
+          />
+
+          <ps-select
+            label="Categoría comentario"
+            icon="panel"
+            formControlName="idCategoriaNovedad"
+            [options]="categoryOptions()"
+            hint="Categoría de la última novedad."
+          />
+
+          <ps-select
+            label="Transportadora"
+            icon="box"
+            formControlName="transportadora"
+            [options]="transportadoraOptions()"
+            hint="Catálogo de transportadoras."
+          />
+
+          <ps-input
+            label="Fecha reporte desde"
+            type="date"
+            icon="calendar"
+            formControlName="fechaReporteDesde"
+          />
+
+          <ps-input
+            label="Fecha reporte hasta"
+            type="date"
+            icon="calendar"
+            formControlName="fechaReporteHasta"
           />
 
           @if (!isFollowUpMode) {
@@ -465,6 +504,7 @@ export class OrdersPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly ordersRepository = inject(OrdersRepository);
+  private readonly orderNovedadRepository = inject(OrderNovedadRepository);
   private readonly reload$ = new Subject<void>();
   protected readonly exportingCsv = signal(false);
   protected readonly pageMode: OrdersPageMode =
@@ -486,8 +526,8 @@ export class OrdersPageComponent {
     ? 'Exportar todo CSV'
     : 'Exportar CSV';
   protected readonly filtersGridClass = this.isFollowUpMode
-    ? 'xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_180px_auto_auto]'
-    : 'xl:grid-cols-[minmax(280px,1.3fr)_220px_220px_240px_180px_auto_auto]';
+    ? 'md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6'
+    : 'md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6';
   protected readonly columns = [
     'Id orden',
     'Orden tienda',
@@ -520,6 +560,33 @@ export class OrdersPageComponent {
   protected readonly platformOptions = PLATFORM_OPTIONS;
   protected readonly reportDateRangeOptions = REPORT_DATE_RANGE_OPTIONS;
   protected readonly followUpPresets = FOLLOW_UP_PRESETS;
+  protected readonly categoriasNovedad = toSignal(
+    this.orderNovedadRepository.listCategorias().pipe(
+      map((response) => response.data),
+      catchError(() => of([])),
+    ),
+    { initialValue: [] },
+  );
+  protected readonly categoryOptions = computed<SelectOption[]>(() => [
+    { label: 'Todos', value: '' },
+    ...this.categoriasNovedad().map((category) => ({
+      label: category.nombre,
+      value: String(category.idCategoria),
+    })),
+  ]);
+  protected readonly transportadoras = toSignal(
+    this.ordersRepository.listTransportadoras().pipe(catchError(() => of([]))),
+    { initialValue: [] },
+  );
+  protected readonly transportadoraOptions = computed<SelectOption[]>(() => [
+    { label: 'Todos', value: '' },
+    ...this.transportadoras()
+      .filter((transportadora) => !!transportadora.nombre?.trim())
+      .map((transportadora) => ({
+        label: transportadora.nombre!,
+        value: transportadora.nombre!,
+      })),
+  ]);
   private readonly defaultReportDateRange: ReportDateRangeValue = this.isFollowUpMode
     ? 'guias_mayor_a_2_dias'
     : '';
@@ -528,6 +595,10 @@ export class OrdersPageComponent {
     busqueda: new FormControl('', { nonNullable: true }),
     estatus: new FormControl('', { nonNullable: true }),
     plataforma: new FormControl('', { nonNullable: true }),
+    idCategoriaNovedad: new FormControl('', { nonNullable: true }),
+    transportadora: new FormControl('', { nonNullable: true }),
+    fechaReporteDesde: new FormControl('', { nonNullable: true }),
+    fechaReporteHasta: new FormControl('', { nonNullable: true }),
     rangoFechaReporte: new FormControl(this.defaultReportDateRange, { nonNullable: true }),
     limit: new FormControl(String(DEFAULT_QUERY.limit), { nonNullable: true }),
   });
@@ -541,6 +612,10 @@ export class OrdersPageComponent {
           busqueda: query.busqueda,
           estatus: query.estatus,
           plataforma: query.plataforma,
+          idCategoriaNovedad: query.idCategoriaNovedad,
+          transportadora: query.transportadora,
+          fechaReporteDesde: query.fechaReporteDesde,
+          fechaReporteHasta: query.fechaReporteHasta,
           rangoFechaReporte: query.rangoFechaReporte as ReportDateRangeValue,
           limit: String(query.limit),
         },
@@ -616,6 +691,10 @@ export class OrdersPageComponent {
         busqueda: formValue.busqueda.trim(),
         estatus: formValue.estatus.trim(),
         plataforma: formValue.plataforma.trim(),
+        idCategoriaNovedad: formValue.idCategoriaNovedad.trim(),
+        transportadora: formValue.transportadora.trim(),
+        fechaReporteDesde: formValue.fechaReporteDesde.trim(),
+        fechaReporteHasta: formValue.fechaReporteHasta.trim(),
         rangoFechaReporte: formValue.rangoFechaReporte.trim(),
       }),
     });
@@ -627,6 +706,10 @@ export class OrdersPageComponent {
         busqueda: '',
         estatus: '',
         plataforma: '',
+        idCategoriaNovedad: '',
+        transportadora: '',
+        fechaReporteDesde: '',
+        fechaReporteHasta: '',
         rangoFechaReporte: this.defaultReportDateRange,
         limit: String(DEFAULT_QUERY.limit),
       },
@@ -654,6 +737,10 @@ export class OrdersPageComponent {
         busqueda: formValue.busqueda.trim(),
         estatus: formValue.estatus.trim(),
         plataforma: formValue.plataforma.trim(),
+        idCategoriaNovedad: formValue.idCategoriaNovedad.trim(),
+        transportadora: formValue.transportadora.trim(),
+        fechaReporteDesde: formValue.fechaReporteDesde.trim(),
+        fechaReporteHasta: formValue.fechaReporteHasta.trim(),
         rangoFechaReporte: range,
       }),
     });
@@ -833,6 +920,10 @@ export class OrdersPageComponent {
       estatus: params.get('estatus')?.trim() ?? '',
       busqueda: params.get('busqueda')?.trim() ?? '',
       plataforma: params.get('plataforma')?.trim() ?? '',
+      idCategoriaNovedad: params.get('idCategoriaNovedad')?.trim() ?? '',
+      transportadora: params.get('transportadora')?.trim() ?? '',
+      fechaReporteDesde: params.get('fechaReporteDesde')?.trim() ?? '',
+      fechaReporteHasta: params.get('fechaReporteHasta')?.trim() ?? '',
       rangoFechaReporte,
     };
   }
@@ -844,6 +935,10 @@ export class OrdersPageComponent {
       estatus: query.estatus || null,
       busqueda: query.busqueda || null,
       plataforma: query.plataforma || null,
+      idCategoriaNovedad: query.idCategoriaNovedad || null,
+      transportadora: query.transportadora || null,
+      fechaReporteDesde: query.fechaReporteDesde || null,
+      fechaReporteHasta: query.fechaReporteHasta || null,
       rangoFechaReporte: query.rangoFechaReporte || null,
     };
   }

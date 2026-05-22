@@ -4,6 +4,17 @@ export interface OrdersApiEnvelope {
   timestamp: string;
 }
 
+export interface TransportadorasApiEnvelope {
+  statusCode: number;
+  data: TransportadoraApiItem[];
+  timestamp: string;
+}
+
+export interface TransportadoraApiItem {
+  idTransportadora: number;
+  nombre: string | null;
+}
+
 export interface OrdersApiPayload {
   data: OrderApiItem[];
   total: number;

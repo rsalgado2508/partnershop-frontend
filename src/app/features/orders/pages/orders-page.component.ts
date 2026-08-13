@@ -838,11 +838,25 @@ export class OrdersPageComponent {
   }
 
   protected formatOpenDays(value: string | null): string {
-    const days = this.calculateOpenDays(value);
-
-    if (days === null) {
+    if (!value) {
       return '—';
     }
+
+    const reportDate = new Date(value);
+
+    if (Number.isNaN(reportDate.getTime())) {
+      return '—';
+    }
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const reportDateStart = new Date(
+      reportDate.getFullYear(),
+      reportDate.getMonth(),
+      reportDate.getDate(),
+    ).getTime();
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const days = Math.max(0, Math.floor((todayStart - reportDateStart) / millisecondsPerDay));
 
     return `${days} ${days === 1 ? 'día' : 'días'}`;
   }
@@ -888,14 +902,28 @@ export class OrdersPageComponent {
     this.exportingCsv.set(true);
 
     try {
-      const rows = this.isFollowUpMode
-        ? await this.fetchAllRowsForCurrentFilters(data)
-        : data.rows;
-
-      this.downloadOrdersCsv(rows);
+      const response = await firstValueFrom(
+        this.ordersRepository.exportCsv(this.currentQuery())
+      );
+      
+      this.downloadBlob(response, this.buildOrdersCsvFileName());
     } finally {
       this.exportingCsv.set(false);
     }
+  }
+
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.style.display = 'none';
+
+    this.document.body.appendChild(link);
+    link.click();
+    this.document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
   }
 
   private parseQueryParams(params: ActivatedRoute['snapshot']['queryParamMap']): OrdersListQuery {
@@ -935,99 +963,7 @@ export class OrdersPageComponent {
     };
   }
 
-  private async fetchAllRowsForCurrentFilters(initialData: OrdersListResponse): Promise<OrderRow[]> {
-    const rows = [...initialData.rows];
 
-    for (let page = 2; page <= initialData.totalPages; page += 1) {
-      const response = await firstValueFrom(
-        this.ordersRepository.list({
-          ...this.currentQuery(),
-          page,
-        }),
-      );
-
-      rows.push(...response.rows);
-    }
-
-    return rows;
-  }
-
-  private downloadOrdersCsv(rows: OrderRow[]): void {
-    const headers = [
-      'Id orden',
-      'Orden tienda',
-      'Cliente',
-      'Producto',
-      'Categoría comentario',
-      'Ciudad',
-      'Plataforma',
-      'Estatus',
-      'Total',
-      'Fecha reporte',
-      'Días abierto',
-      'Fecha creación',
-      'Guía',
-      'Transportadora',
-    ];
-    const csvRows = rows.map((row) => [
-      String(row.idOrden),
-      this.displayValue(row.idOrdenTienda),
-      this.displayValue(row.clienteNombre),
-      this.getProductNames(row),
-      this.displayValue(row.novedadCategoriaNombre),
-      this.displayValue(row.ciudadNombre),
-      this.displayValue(row.plataforma),
-      row.estatus.label,
-      this.formatCurrency(row.totalOrden),
-      this.formatDate(row.fechaReporte),
-      this.formatOpenDays(row.fechaReporte),
-      this.formatDateTime(row.fechaCreacion),
-      this.displayValue(row.numeroGuia),
-      this.displayValue(row.transportadoraNombre),
-    ]);
-    const csvContent = [headers, ...csvRows]
-      .map((columns) => columns.map((value) => this.escapeCsvValue(value)).join(','))
-      .join('\n');
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = this.document.createElement('a');
-
-    link.href = downloadUrl;
-    link.download = this.buildOrdersCsvFileName();
-    link.style.display = 'none';
-
-    this.document.body.appendChild(link);
-    link.click();
-    this.document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
-  }
-
-  private escapeCsvValue(value: string): string {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-
-  private calculateOpenDays(value: string | null): number | null {
-    if (!value) {
-      return null;
-    }
-
-    const reportDate = new Date(value);
-
-    if (Number.isNaN(reportDate.getTime())) {
-      return null;
-    }
-
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-    const reportDateStart = new Date(
-      reportDate.getFullYear(),
-      reportDate.getMonth(),
-      reportDate.getDate(),
-    ).getTime();
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-
-    return Math.max(0, Math.floor((todayStart - reportDateStart) / millisecondsPerDay));
-  }
 
   private buildOrdersCsvFileName(): string {
     const timestamp = new Intl.DateTimeFormat('sv-SE', {

@@ -290,7 +290,7 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             [options]="pageSizeOptions"
           />
 
-          <div class="flex items-end gap-3 md:col-span-2 xl:col-span-2 2xl:col-span-2">
+          <div class="flex flex-wrap items-center gap-3 md:col-span-2 xl:col-span-2 2xl:col-span-2">
             <ps-button type="submit">Aplicar filtros</ps-button>
             <ps-button type="button" variant="secondary" (click)="clearFilters()">
               Limpiar

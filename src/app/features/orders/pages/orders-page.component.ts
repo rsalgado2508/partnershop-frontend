@@ -88,14 +88,6 @@ const REPORT_DATE_RANGE_OPTIONS: SelectOption[] = [
   { label: 'Más de 20 días', value: 'mas_de_20_dias' },
 ];
 
-const PLATFORM_OPTIONS: SelectOption[] = [
-  { label: 'Todos', value: '' },
-  { label: 'Venta Directa', value: 'Venta Directa' },
-  { label: 'Dropi', value: 'Dropi' },
-  { label: 'Venndelo', value: 'Venndelo' },
-  { label: 'Enviosexito', value: 'Enviosexito' },
-];
-
 const REPORT_DATE_RANGE_VALUES = new Set(
   REPORT_DATE_RANGE_OPTIONS.map((option) => option.value),
 );
@@ -242,7 +234,8 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             label="Plataforma"
             icon="box"
             formControlName="plataforma"
-            [options]="platformOptions"
+            [options]="platformOptions()"
+            [hint]="platformsError() ? 'No se pudieron actualizar las plataformas. Vuelve a aplicar filtros para reintentar.' : undefined"
           />
 
           <ps-select
@@ -549,7 +542,9 @@ export class OrdersPageComponent {
       value: status.code,
     })),
   ];
-  protected readonly platformOptions = PLATFORM_OPTIONS;
+  protected readonly platformsError = signal(false);
+  private readonly cachedPlatforms = signal<string[]>([]);
+  private readonly refreshPlatforms$ = new Subject<void>();
   protected readonly reportDateRangeOptions = REPORT_DATE_RANGE_OPTIONS;
   protected readonly followUpPresets = FOLLOW_UP_PRESETS;
   protected readonly categoriasNovedad = toSignal(
@@ -622,6 +617,35 @@ export class OrdersPageComponent {
       rangoFechaReporte: this.defaultReportDateRange,
     },
   });
+  protected readonly platforms = toSignal(
+    combineLatest([
+      this.query$,
+      this.reload$.pipe(startWith(undefined)),
+      this.refreshPlatforms$.pipe(startWith(undefined)),
+    ]).pipe(
+      switchMap(() => this.ordersRepository.listPlataformas().pipe(
+        tap((platforms) => {
+          this.cachedPlatforms.set(platforms);
+          this.platformsError.set(false);
+        }),
+        catchError(() => {
+          this.platformsError.set(true);
+          return of(this.cachedPlatforms());
+        }),
+      )),
+    ),
+    { initialValue: [] as string[] },
+  );
+  protected readonly platformOptions = computed<SelectOption[]>(() => {
+    const platforms = [...this.platforms()];
+    const selected = this.currentQuery().plataforma;
+    if (selected && !platforms.includes(selected)) platforms.push(selected);
+    return [
+      { label: 'Todos', value: '' },
+      ...platforms.map((platform) => ({ label: platform, value: platform })),
+    ];
+  });
+
   protected readonly activeRangeLabel = computed(() => {
     const option = this.reportDateRangeOptions.find(
       (item) => item.value === this.currentQuery().rangoFechaReporte,
@@ -682,13 +706,15 @@ export class OrdersPageComponent {
         limit: Number(formValue.limit) || DEFAULT_QUERY.limit,
         busqueda: formValue.busqueda.trim(),
         estatus: formValue.estatus.trim(),
-        plataforma: formValue.plataforma.trim(),
+        plataforma: formValue.plataforma,
         idCategoriaNovedad: formValue.idCategoriaNovedad.trim(),
         transportadora: formValue.transportadora.trim(),
         fechaReporteDesde: formValue.fechaReporteDesde.trim(),
         fechaReporteHasta: formValue.fechaReporteHasta.trim(),
         rangoFechaReporte: formValue.rangoFechaReporte.trim(),
       }),
+    }).then((navigated) => {
+      if (!navigated) this.refreshPlatforms$.next();
     });
   }
 
@@ -728,7 +754,7 @@ export class OrdersPageComponent {
         limit: Number(formValue.limit) || DEFAULT_QUERY.limit,
         busqueda: formValue.busqueda.trim(),
         estatus: formValue.estatus.trim(),
-        plataforma: formValue.plataforma.trim(),
+        plataforma: formValue.plataforma,
         idCategoriaNovedad: formValue.idCategoriaNovedad.trim(),
         transportadora: formValue.transportadora.trim(),
         fechaReporteDesde: formValue.fechaReporteDesde.trim(),
@@ -939,7 +965,7 @@ export class OrdersPageComponent {
       limit: Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_QUERY.limit,
       estatus: params.get('estatus')?.trim() ?? '',
       busqueda: params.get('busqueda')?.trim() ?? '',
-      plataforma: params.get('plataforma')?.trim() ?? '',
+      plataforma: params.get('plataforma') ?? '',
       idCategoriaNovedad: params.get('idCategoriaNovedad')?.trim() ?? '',
       transportadora: params.get('transportadora')?.trim() ?? '',
       fechaReporteDesde: params.get('fechaReporteDesde')?.trim() ?? '',

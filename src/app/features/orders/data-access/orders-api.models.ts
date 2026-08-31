@@ -4,6 +4,12 @@ export interface OrdersApiEnvelope {
   timestamp: string;
 }
 
+export interface PlataformasApiEnvelope {
+  statusCode: number;
+  data: string[];
+  timestamp: string;
+}
+
 export interface TransportadorasApiEnvelope {
   statusCode: number;
   data: TransportadoraApiItem[];

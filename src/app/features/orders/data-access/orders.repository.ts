@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { API_BASE_URL } from '@core/http/api.config';
 import { Observable, map } from 'rxjs';
-import { OrdersApiEnvelope, TransportadorasApiEnvelope } from './orders-api.models';
+import { OrdersApiEnvelope, PlataformasApiEnvelope, TransportadorasApiEnvelope } from './orders-api.models';
 import { mapOrdersResponse } from './orders.mapper';
 import { OrdersListQuery, OrdersListResponse, TransportadoraOption } from './orders.models';
 
@@ -115,6 +115,12 @@ export class OrdersRepository {
   listTransportadoras(): Observable<TransportadoraOption[]> {
     return this.http
       .get<TransportadorasApiEnvelope>(`${this.apiBaseUrl}/ordenes/transportadoras`)
+      .pipe(map((response) => response.data));
+  }
+
+  listPlataformas(): Observable<string[]> {
+    return this.http
+      .get<PlataformasApiEnvelope>(`${this.apiBaseUrl}/ordenes/plataformas`)
       .pipe(map((response) => response.data));
   }
 

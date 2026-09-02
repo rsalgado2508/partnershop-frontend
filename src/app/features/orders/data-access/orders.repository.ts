@@ -2,7 +2,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { API_BASE_URL } from '@core/http/api.config';
 import { Observable, map } from 'rxjs';
-import { OrdersApiEnvelope, PlataformasApiEnvelope, TransportadorasApiEnvelope } from './orders-api.models';
+import {
+  OrdersApiEnvelope,
+  PlataformasApiEnvelope,
+  TransportadorasApiEnvelope,
+} from './orders-api.models';
 import { mapOrdersResponse } from './orders.mapper';
 import { OrdersListQuery, OrdersListResponse, TransportadoraOption } from './orders.models';
 
@@ -71,7 +75,9 @@ export class OrdersRepository {
   list(query: OrdersListQuery): Observable<OrdersListResponse> {
     let params = new HttpParams()
       .set('page', query.page)
-      .set('limit', query.limit);
+      .set('limit', query.limit)
+      .set('ordenarPor', query.ordenarPor)
+      .set('direccion', query.direccion);
 
     if (query.estatus) {
       params = params.set('estatus', query.estatus);

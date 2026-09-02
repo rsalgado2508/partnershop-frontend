@@ -1,5 +1,12 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -30,7 +37,12 @@ import {
 import { OrderNovedadRepository } from '../data-access/order-novedad.repository';
 import { ORDER_STATUS_CATALOG } from '../data-access/orders-status.catalog';
 import { OrdersRepository } from '../data-access/orders.repository';
-import { OrderRow, OrdersListQuery, OrdersListResponse } from '../data-access/orders.models';
+import {
+  OrderRow,
+  OrdersListQuery,
+  OrdersListResponse,
+  OrdersSortField,
+} from '../data-access/orders.models';
 
 type OrdersViewState =
   | { status: 'loading' }
@@ -77,7 +89,25 @@ const DEFAULT_QUERY: OrdersListQuery = {
   fechaReporteDesde: '',
   fechaReporteHasta: '',
   rangoFechaReporte: '',
+  ordenarPor: 'fechaReporte',
+  direccion: 'asc',
 };
+
+const SORT_FIELDS = new Set<OrdersSortField>([
+  'ordenTienda',
+  'cliente',
+  'producto',
+  'categoriaComentario',
+  'ciudad',
+  'plataforma',
+  'estatus',
+  'total',
+  'fechaReporte',
+  'diasAbierto',
+  'ultimoComentario',
+  'guia',
+  'transportadora',
+]);
 
 const REPORT_DATE_RANGE_OPTIONS: SelectOption[] = [
   { label: 'Todos', value: '' },
@@ -88,9 +118,7 @@ const REPORT_DATE_RANGE_OPTIONS: SelectOption[] = [
   { label: 'Más de 20 días', value: 'mas_de_20_dias' },
 ];
 
-const REPORT_DATE_RANGE_VALUES = new Set(
-  REPORT_DATE_RANGE_OPTIONS.map((option) => option.value),
-);
+const REPORT_DATE_RANGE_VALUES = new Set(REPORT_DATE_RANGE_OPTIONS.map((option) => option.value));
 
 const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
   {
@@ -149,8 +177,11 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
               <!--ps-badge tone="mint">Backend NestJS</ps-badge-->
             </div>
 
-            <h2 class="mt-5 text-3xl font-extrabold tracking-[-0.04em] text-ink-950 md:text-[2.8rem]">
-              {{ pageTitle }} <!--code>/api/ordenes</code-->
+            <h2
+              class="mt-5 text-3xl font-extrabold tracking-[-0.04em] text-ink-950 md:text-[2.8rem]"
+            >
+              {{ pageTitle }}
+              <!--code>/api/ordenes</code-->
             </h2>
 
             <p class="mt-4 max-w-2xl text-sm leading-7 text-ink-600">
@@ -177,7 +208,9 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
               }
             </div>
             <div class="ps-kpi-card min-w-[170px]">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">Total visible</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+                Total visible
+              </p>
               <p class="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-ink-950">
                 {{ totalItems() }}
               </p>
@@ -198,9 +231,15 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                 [class.text-ink-700]="currentQuery().rangoFechaReporte !== preset.value"
                 [class.hover:border-brand-200]="currentQuery().rangoFechaReporte !== preset.value"
                 [class.hover:text-brand-800]="currentQuery().rangoFechaReporte !== preset.value"
-                [style.borderColor]="currentQuery().rangoFechaReporte === preset.value ? preset.accentColor : null"
-                [style.backgroundColor]="currentQuery().rangoFechaReporte === preset.value ? preset.accentSoftColor : null"
-                [style.color]="currentQuery().rangoFechaReporte === preset.value ? preset.accentDarkColor : null"
+                [style.borderColor]="
+                  currentQuery().rangoFechaReporte === preset.value ? preset.accentColor : null
+                "
+                [style.backgroundColor]="
+                  currentQuery().rangoFechaReporte === preset.value ? preset.accentSoftColor : null
+                "
+                [style.color]="
+                  currentQuery().rangoFechaReporte === preset.value ? preset.accentDarkColor : null
+                "
                 (click)="selectFollowUpPreset(preset.value)"
               >
                 <span
@@ -235,7 +274,11 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
             icon="box"
             formControlName="plataforma"
             [options]="platformOptions()"
-            [hint]="platformsError() ? 'No se pudieron actualizar las plataformas. Vuelve a aplicar filtros para reintentar.' : undefined"
+            [hint]="
+              platformsError()
+                ? 'No se pudieron actualizar las plataformas. Vuelve a aplicar filtros para reintentar.'
+                : undefined
+            "
           />
 
           <ps-select
@@ -377,25 +420,29 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                   <table class="ps-data-table">
                     <thead>
                       <tr>
-                        <th>Orden tienda</th>
-                        <th>Cliente</th>
-                        <th>Producto</th>
-                        <th>Categoría Comentario</th>
-                        <th>Ciudad</th>
-                        <th>Plataforma</th>
-                        <th>Estatus</th>
-                        <th>Total</th>
-                        <th>Fecha reporte</th>
-                        <th>Días abierto</th>
-                        <th>Guía</th>
-                        <th>Transportadora</th>
+                        @for (column of sortableColumns; track column.key) {
+                          <th [attr.aria-sort]="ariaSort(column.key)">
+                            <button
+                              type="button"
+                              class="inline-flex w-full items-center gap-1.5 text-left"
+                              (click)="sortBy(column.key)"
+                            >
+                              {{ column.label }}
+                              <span aria-hidden="true" class="text-[0.7rem] text-ink-400">
+                                {{ sortIndicator(column.key) }}
+                              </span>
+                            </button>
+                          </th>
+                        }
                         <th>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (row of ordersData()?.rows ?? []; track row.idOrden) {
                         <tr>
-                          <td class="font-semibold text-ink-950">{{ displayValue(row.idOrdenTienda) }}</td>
+                          <td class="font-semibold text-ink-950">
+                            {{ displayValue(row.idOrdenTienda) }}
+                          </td>
                           <td>{{ displayValue(row.clienteNombre) }}</td>
                           <td>{{ getProductNames(row) }}</td>
                           <td>{{ displayValue(row.novedadCategoriaNombre) }}</td>
@@ -406,6 +453,7 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
                           </td>
                           <td>{{ formatCurrency(row.totalOrden) }}</td>
                           <td>{{ formatDate(row.fechaReporte) }}</td>
+                          <td>{{ formatDateTime(row.fechaUltimoComentario) }}</td>
                           <td>{{ formatOpenDays(row.fechaReporte) }}</td>
                           <td>{{ displayValue(row.numeroGuia) }}</td>
                           <td>{{ displayValue(row.transportadoraNombre) }}</td>
@@ -507,26 +555,40 @@ export class OrdersPageComponent {
   protected readonly listTitle = this.isFollowUpMode
     ? 'Órdenes filtradas por backlog operativo'
     : 'Resultado de la consulta actual';
-  protected readonly exportButtonLabel = this.isFollowUpMode
-    ? 'Exportar todo CSV'
-    : 'Exportar CSV';
+  protected readonly exportButtonLabel = this.isFollowUpMode ? 'Exportar todo CSV' : 'Exportar CSV';
   protected readonly filtersGridClass = this.isFollowUpMode
     ? 'md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6'
     : 'md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6';
   protected readonly columns = [
-    'Id orden',
     'Orden tienda',
     'Cliente',
+    'Producto',
+    'Categoría Comentario',
     'Ciudad',
     'Plataforma',
     'Estatus',
     'Total',
     'Fecha reporte',
+    'Último comentario',
     'Días abierto',
-    'Fecha creación',
     'Guía',
     'Transportadora',
     'Acción',
+  ];
+  protected readonly sortableColumns: ReadonlyArray<{ label: string; key: OrdersSortField }> = [
+    { label: 'Orden tienda', key: 'ordenTienda' },
+    { label: 'Cliente', key: 'cliente' },
+    { label: 'Producto', key: 'producto' },
+    { label: 'Categoría Comentario', key: 'categoriaComentario' },
+    { label: 'Ciudad', key: 'ciudad' },
+    { label: 'Plataforma', key: 'plataforma' },
+    { label: 'Estatus', key: 'estatus' },
+    { label: 'Total', key: 'total' },
+    { label: 'Fecha reporte', key: 'fechaReporte' },
+    { label: 'Último comentario', key: 'ultimoComentario' },
+    { label: 'Días abierto', key: 'diasAbierto' },
+    { label: 'Guía', key: 'guia' },
+    { label: 'Transportadora', key: 'transportadora' },
   ];
   protected readonly skeletonRows = Array.from({ length: 6 });
   protected readonly pageSizeOptions: SelectOption[] = [
@@ -623,16 +685,18 @@ export class OrdersPageComponent {
       this.reload$.pipe(startWith(undefined)),
       this.refreshPlatforms$.pipe(startWith(undefined)),
     ]).pipe(
-      switchMap(() => this.ordersRepository.listPlataformas().pipe(
-        tap((platforms) => {
-          this.cachedPlatforms.set(platforms);
-          this.platformsError.set(false);
-        }),
-        catchError(() => {
-          this.platformsError.set(true);
-          return of(this.cachedPlatforms());
-        }),
-      )),
+      switchMap(() =>
+        this.ordersRepository.listPlataformas().pipe(
+          tap((platforms) => {
+            this.cachedPlatforms.set(platforms);
+            this.platformsError.set(false);
+          }),
+          catchError(() => {
+            this.platformsError.set(true);
+            return of(this.cachedPlatforms());
+          }),
+        ),
+      ),
     ),
     { initialValue: [] as string[] },
   );
@@ -658,7 +722,6 @@ export class OrdersPageComponent {
     combineLatest([this.query$, this.reload$.pipe(startWith(undefined))]).pipe(
       switchMap(([query]) =>
         this.ordersRepository.list(query).pipe(
-          tap((data) => {console.log(data)}),
           map((data): OrdersViewState => ({ status: 'success', data })),
           startWith({ status: 'loading' } as OrdersViewState),
           catchError(() =>
@@ -686,9 +749,7 @@ export class OrdersPageComponent {
     const state = this.viewState();
     return state?.status === 'error' ? state.message : '';
   });
-  protected readonly totalItems = computed(() =>
-    this.ordersData()?.total ?? 0,
-  );
+  protected readonly totalItems = computed(() => this.ordersData()?.total ?? 0);
 
   constructor() {
     this.filtersForm.controls.limit.valueChanges
@@ -699,23 +760,27 @@ export class OrdersPageComponent {
   protected applyFilters(): void {
     const formValue = this.filtersForm.getRawValue();
 
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: this.serializeQuery({
-        page: 1,
-        limit: Number(formValue.limit) || DEFAULT_QUERY.limit,
-        busqueda: formValue.busqueda.trim(),
-        estatus: formValue.estatus.trim(),
-        plataforma: formValue.plataforma,
-        idCategoriaNovedad: formValue.idCategoriaNovedad.trim(),
-        transportadora: formValue.transportadora.trim(),
-        fechaReporteDesde: formValue.fechaReporteDesde.trim(),
-        fechaReporteHasta: formValue.fechaReporteHasta.trim(),
-        rangoFechaReporte: formValue.rangoFechaReporte.trim(),
-      }),
-    }).then((navigated) => {
-      if (!navigated) this.refreshPlatforms$.next();
-    });
+    void this.router
+      .navigate([], {
+        relativeTo: this.route,
+        queryParams: this.serializeQuery({
+          page: 1,
+          limit: Number(formValue.limit) || DEFAULT_QUERY.limit,
+          busqueda: formValue.busqueda.trim(),
+          estatus: formValue.estatus.trim(),
+          plataforma: formValue.plataforma,
+          idCategoriaNovedad: formValue.idCategoriaNovedad.trim(),
+          transportadora: formValue.transportadora.trim(),
+          fechaReporteDesde: formValue.fechaReporteDesde.trim(),
+          fechaReporteHasta: formValue.fechaReporteHasta.trim(),
+          rangoFechaReporte: formValue.rangoFechaReporte.trim(),
+          ordenarPor: this.currentQuery().ordenarPor,
+          direccion: this.currentQuery().direccion,
+        }),
+      })
+      .then((navigated) => {
+        if (!navigated) this.refreshPlatforms$.next();
+      });
   }
 
   protected clearFilters(): void {
@@ -760,6 +825,8 @@ export class OrdersPageComponent {
         fechaReporteDesde: formValue.fechaReporteDesde.trim(),
         fechaReporteHasta: formValue.fechaReporteHasta.trim(),
         rangoFechaReporte: range,
+        ordenarPor: this.currentQuery().ordenarPor,
+        direccion: this.currentQuery().direccion,
       }),
     });
   }
@@ -773,6 +840,31 @@ export class OrdersPageComponent {
         page: Math.max(1, page),
       }),
     });
+  }
+
+  protected sortBy(field: OrdersSortField): void {
+    const query = this.currentQuery();
+    const direction = query.ordenarPor === field && query.direccion === 'asc' ? 'desc' : 'asc';
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.serializeQuery({
+        ...query,
+        page: 1,
+        ordenarPor: field,
+        direccion: direction,
+      }),
+    });
+  }
+
+  protected sortIndicator(field: OrdersSortField): string {
+    if (this.currentQuery().ordenarPor !== field) return '↕';
+    return this.currentQuery().direccion === 'asc' ? '▲' : '▼';
+  }
+
+  protected ariaSort(field: OrdersSortField): 'ascending' | 'descending' | 'none' {
+    if (this.currentQuery().ordenarPor !== field) return 'none';
+    return this.currentQuery().direccion === 'asc' ? 'ascending' : 'descending';
   }
 
   protected retry(): void {
@@ -928,10 +1020,8 @@ export class OrdersPageComponent {
     this.exportingCsv.set(true);
 
     try {
-      const response = await firstValueFrom(
-        this.ordersRepository.exportCsv(this.currentQuery())
-      );
-      
+      const response = await firstValueFrom(this.ordersRepository.exportCsv(this.currentQuery()));
+
       this.downloadBlob(response, this.buildOrdersCsvFileName());
     } finally {
       this.exportingCsv.set(false);
@@ -955,10 +1045,15 @@ export class OrdersPageComponent {
   private parseQueryParams(params: ActivatedRoute['snapshot']['queryParamMap']): OrdersListQuery {
     const page = Number(params.get('page') ?? DEFAULT_QUERY.page);
     const limit = Number(params.get('limit') ?? DEFAULT_QUERY.limit);
-    const rawReportDateRange = params.get('rangoFechaReporte')?.trim() ?? this.defaultReportDateRange;
+    const rawReportDateRange =
+      params.get('rangoFechaReporte')?.trim() ?? this.defaultReportDateRange;
     const rangoFechaReporte = REPORT_DATE_RANGE_VALUES.has(rawReportDateRange)
       ? rawReportDateRange
       : this.defaultReportDateRange;
+    const rawSortField = params.get('ordenarPor') as OrdersSortField | null;
+    const ordenarPor =
+      rawSortField && SORT_FIELDS.has(rawSortField) ? rawSortField : DEFAULT_QUERY.ordenarPor;
+    const direccion = params.get('direccion') === 'desc' ? 'desc' : 'asc';
 
     return {
       page: Number.isFinite(page) && page > 0 ? page : DEFAULT_QUERY.page,
@@ -971,6 +1066,8 @@ export class OrdersPageComponent {
       fechaReporteDesde: params.get('fechaReporteDesde')?.trim() ?? '',
       fechaReporteHasta: params.get('fechaReporteHasta')?.trim() ?? '',
       rangoFechaReporte,
+      ordenarPor,
+      direccion,
     };
   }
 
@@ -986,10 +1083,10 @@ export class OrdersPageComponent {
       fechaReporteDesde: query.fechaReporteDesde || null,
       fechaReporteHasta: query.fechaReporteHasta || null,
       rangoFechaReporte: query.rangoFechaReporte || null,
+      ordenarPor: query.ordenarPor,
+      direccion: query.direccion,
     };
   }
-
-
 
   private buildOrdersCsvFileName(): string {
     const timestamp = new Intl.DateTimeFormat('sv-SE', {

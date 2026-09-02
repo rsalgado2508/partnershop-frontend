@@ -9,7 +9,26 @@ export interface OrdersListQuery {
   fechaReporteDesde: string;
   fechaReporteHasta: string;
   rangoFechaReporte: string;
+  ordenarPor: OrdersSortField;
+  direccion: OrdersSortDirection;
 }
+
+export type OrdersSortField =
+  | 'ordenTienda'
+  | 'cliente'
+  | 'producto'
+  | 'categoriaComentario'
+  | 'ciudad'
+  | 'plataforma'
+  | 'estatus'
+  | 'total'
+  | 'fechaReporte'
+  | 'diasAbierto'
+  | 'ultimoComentario'
+  | 'guia'
+  | 'transportadora';
+
+export type OrdersSortDirection = 'asc' | 'desc';
 
 export interface OrdersListResponse {
   rows: OrderRow[];
@@ -36,6 +55,7 @@ export interface OrderRow {
   precioFlete: number | null;
   ganancia: number | null;
   fechaReporte: string | null;
+  fechaUltimoComentario: string | null;
   fechaCreacion: string | null;
   numeroGuia: string | null;
   transportadoraNombre: string | null;

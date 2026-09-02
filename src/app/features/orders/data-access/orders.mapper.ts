@@ -28,6 +28,7 @@ function mapRow(item: OrderApiItem): OrderRow {
     precioFlete: parseAmount(item.precioFlete),
     ganancia: parseAmount(item.ganancia),
     fechaReporte: item.fechaReporte,
+    fechaUltimoComentario: item.novedad?.fechaRegistro ?? null,
     fechaCreacion: item.fechaCreacion,
     numeroGuia: item.numeroGuia,
     transportadoraNombre: item.transportadora?.nombre ?? null,

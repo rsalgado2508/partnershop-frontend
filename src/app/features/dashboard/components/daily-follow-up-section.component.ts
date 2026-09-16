@@ -23,10 +23,12 @@ import { NovedadesCategorySummary } from '../data-access/novedades-category-summ
 
 import { OrdersRepository } from '../../orders/data-access/orders.repository';
 
+import { SeguimientoActual } from '../../orders/data-access/orders.models';
+
 type DailyFollowUpViewState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'success'; data: DailyFollowUpRow[]; totalGuiasActual: number };
+  | { status: 'success'; data: DailyFollowUpRow[]; current: SeguimientoActual };
 
 type NovedadesCategoryViewState =
   | { status: 'loading' }
@@ -440,15 +442,10 @@ export class DailyFollowUpSectionComponent {
       switchMap(() =>
         forkJoin({
           history: this.repository.list(this.filtersState()),
-          current: this.ordersRepository.list({
-            page: 1, limit: 1, rangoFechaReporte: 'guias_mayor_a_2_dias',
-            ordenarPor: 'fechaReporte', direccion: 'asc',
-            estatus: '', busqueda: '', plataforma: '', idCategoriaNovedad: '',
-            transportadora: '', fechaReporteDesde: '', fechaReporteHasta: '',
-          }),
+          current: this.ordersRepository.seguimientoActual(),
         }).pipe(
           map(({ history, current }): DailyFollowUpViewState => ({
-            status: 'success', data: history, totalGuiasActual: current.total,
+            status: 'success', data: history, current,
           })),
           startWith({ status: 'loading' } as DailyFollowUpViewState),
           catchError((error: unknown) => {
@@ -533,51 +530,47 @@ export class DailyFollowUpSectionComponent {
     return `${first.fechaSeguimientoLabel} al ${last.fechaSeguimientoLabel}`;
   });
   protected readonly kpiCards = computed<KpiCard[]>(() => {
-    const rows = this.rows();
-
     const state = this.viewState();
     if (state.status !== 'success') return [];
     const currentCard: KpiCard = {
       label: 'Guía gen/pendi > 2 días',
-      value: this.formatInteger(state.totalGuiasActual),
+      value: this.formatInteger(state.current.guiasMayorA2Dias),
       caption: 'Conteo actual de Órdenes de seguimiento, sin filtros adicionales. Se actualiza al consultar.',
       toneClass: 'bg-brand-100 text-brand-800',
       badgeLabel: 'Actual',
     };
-    if (!rows.length) return [currentCard];
-    const latestRow = rows[rows.length - 1];
-    const totalEntre7y15 = latestRow.totalEntre7y15;
-    const totalEntre15y20 = latestRow.totalEntre15y20;
-    const totalMayorA20 = latestRow.totalMayorA20;
-    const sumaOrdenesTotales = latestRow.totalAcumulado;
+    const totalEntre7y15 = state.current.entre7y15;
+    const totalEntre15y20 = state.current.entre15y20;
+    const totalMayorA20 = state.current.mayorA20;
+    const sumaOrdenesTotales = state.current.totalUnico;
 
     return [
       currentCard,
       {
-        label: '7 a 15 días',
+        label: '7 a 14 días',
         value: this.formatInteger(totalEntre7y15),
-        caption: 'Sumatoria acumulada dentro del rango intermedio inicial.',
+        caption: 'Órdenes actuales con 7 a 14 días calendario.',
         toneClass: 'bg-ink-100 text-ink-700',
-        badgeLabel: 'Acumulado',
+        badgeLabel: 'Actual',
       },
       {
         label: '15 a 20 días',
         value: this.formatInteger(totalEntre15y20),
-        caption: 'Sumatoria acumulada cercana al umbral de mayor antigüedad.',
+        caption: 'Órdenes actuales con 15 a 20 días calendario.',
         toneClass: 'bg-mint-100 text-mint-800',
-        badgeLabel: 'Acumulado',
+        badgeLabel: 'Actual',
       },
       {
         label: 'Más de 20 días',
         value: this.formatInteger(totalMayorA20),
-        caption: 'Sumatoria acumulada con mayor antigüedad.',
+        caption: 'Órdenes actuales con 21 días calendario o más.',
         toneClass: 'bg-gold-100 text-gold-800',
-        badgeLabel: 'Acumulado',
+        badgeLabel: 'Actual',
       },
       {
-        label: 'Total del último corte',
+        label: 'Total de órdenes en seguimiento',
         value: this.formatInteger(sumaOrdenesTotales),
-        caption: 'Suma de los rangos del último corte histórico; no incluye el conteo actual.',
+        caption: 'Órdenes únicas de los cuatro grupos; cada orden se cuenta una sola vez.',
         toneClass: 'bg-mint-100 text-mint-800',
         badgeLabel: 'Total',
       },

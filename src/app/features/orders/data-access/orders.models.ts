@@ -125,3 +125,11 @@ export interface OrderProduct {
   idProducto: number;
   nombreOficial: string | null;
 }
+
+export interface SeguimientoActual {
+  guiasMayorA2Dias: number;
+  entre7y15: number;
+  entre15y20: number;
+  mayorA20: number;
+  totalUnico: number;
+}

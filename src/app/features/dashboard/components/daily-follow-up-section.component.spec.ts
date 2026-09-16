@@ -7,12 +7,12 @@ import { OrdersRepository } from '../../orders/data-access/orders.repository';
 
 describe('Dashboard current guide count', () => {
   async function setup(history: unknown[] = []) {
-    const list = vi.fn(() => of({ total: 122, rows: [] }));
+    const list = vi.fn(() => of({ guiasMayorA2Dias: 122, entre7y15: 10, entre15y20: 20, mayorA20: 30, totalUnico: 150 }));
     await TestBed.configureTestingModule({
       imports: [DailyFollowUpSectionComponent],
       providers: [
         { provide: DailyFollowUpRepository, useValue: { list: () => of(history) } },
-        { provide: OrdersRepository, useValue: { list } },
+        { provide: OrdersRepository, useValue: { seguimientoActual: list } },
         { provide: NovedadesCategorySummaryRepository, useValue: {
           listSummary: () => of({ guiasMayorA2Dias: [], mayorA20Dias: [] }),
         } },
@@ -26,17 +26,14 @@ describe('Dashboard current guide count', () => {
     const { component, list } = await setup([row]);
     expect(component['kpiCards']()[0].value).toBe('122');
     expect(component['rows']()[0].totalGuiasMayorA2Dias).toBe(15);
-    expect(component['kpiCards']()[4].value).toBe('27');
-    expect(list).toHaveBeenCalledWith(expect.objectContaining({
-      rangoFechaReporte: 'guias_mayor_a_2_dias', limit: 1,
-      fechaReporteDesde: '', fechaReporteHasta: '',
-    }));
+    expect(component['kpiCards']().map(card => card.value)).toEqual(['122', '10', '20', '30', '150']);
+    expect(list).toHaveBeenCalledWith();
   });
 
   it('shows a current count without historical snapshots and refreshes it', async () => {
     const { component, list } = await setup();
     expect(component['kpiCards']()[0].value).toBe('122');
-    list.mockReturnValue(of({ total: 0, rows: [] }));
+    list.mockReturnValue(of({ guiasMayorA2Dias: 0, entre7y15: 0, entre15y20: 0, mayorA20: 0, totalUnico: 0 }));
     component['reload']();
     expect(component['kpiCards']()[0].value).toBe('0');
     list.mockReturnValue(throwError(() => new Error('offline')));

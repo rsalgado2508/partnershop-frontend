@@ -8,7 +8,7 @@ import {
   TransportadorasApiEnvelope,
 } from './orders-api.models';
 import { mapOrdersResponse } from './orders.mapper';
-import { OrdersListQuery, OrdersListResponse, TransportadoraOption } from './orders.models';
+import { OrdersListQuery, OrdersListResponse, SeguimientoActual, TransportadoraOption } from './orders.models';
 
 @Injectable({
   providedIn: 'root',
@@ -70,6 +70,10 @@ export class OrdersRepository {
     }
 
     return null;
+  }
+
+  seguimientoActual(): Observable<SeguimientoActual> {
+    return this.http.get<SeguimientoActual>(`${this.apiBaseUrl}/ordenes/seguimiento-actual`);
   }
 
   list(query: OrdersListQuery): Observable<OrdersListResponse> {

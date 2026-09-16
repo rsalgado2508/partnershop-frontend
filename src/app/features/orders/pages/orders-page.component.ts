@@ -113,7 +113,7 @@ const REPORT_DATE_RANGE_OPTIONS: SelectOption[] = [
   { label: 'Todos', value: '' },
   { label: 'Últimos 7 días', value: 'ultimos_7_dias' },
   { label: 'Guía gen/pendi > 2 días', value: 'guias_mayor_a_2_dias' },
-  { label: 'Entre 7 y 15 días', value: 'entre_7_y_15_dias' },
+  { label: 'Entre 7 y 14 días', value: 'entre_7_y_15_dias' },
   { label: 'Entre 15 y 20 días', value: 'entre_15_y_20_dias' },
   { label: 'Más de 20 días', value: 'mas_de_20_dias' },
 ];
@@ -129,7 +129,7 @@ const FOLLOW_UP_PRESETS: FollowUpPreset[] = [
     accentSoftColor: '#d2f4ea',
   },
   {
-    label: '7 a 15 días',
+    label: '7 a 14 días',
     value: 'entre_7_y_15_dias',
     accentColor: '#8b5cf6',
     accentDarkColor: '#6d28d9',

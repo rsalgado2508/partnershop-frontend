@@ -73,7 +73,17 @@ export class OrdersRepository {
   }
 
   seguimientoActual(): Observable<SeguimientoActual> {
-    return this.http.get<SeguimientoActual>(`${this.apiBaseUrl}/ordenes/seguimiento-actual`);
+    return this.http
+      .get<{ data: SeguimientoActual }>(`${this.apiBaseUrl}/ordenes/seguimiento-actual`)
+      .pipe(map(({ data }) => {
+        const keys: (keyof SeguimientoActual)[] = [
+          'guiasMayorA2Dias', 'entre7y15', 'entre15y20', 'mayorA20', 'totalUnico',
+        ];
+        if (!data || keys.some(key => !Number.isSafeInteger(data[key]) || data[key] < 0)) {
+          throw new Error('La API devolvió conteos de seguimiento inválidos.');
+        }
+        return data;
+      }));
   }
 
   list(query: OrdersListQuery): Observable<OrdersListResponse> {

@@ -9,7 +9,7 @@ import { EmptyStateComponent } from '@shared/ui/empty-state/empty-state.componen
 import { IconComponent } from '@shared/ui/icon/icon.component';
 import { InputComponent } from '@shared/ui/input/input.component';
 import { SkeletonComponent } from '@shared/ui/skeleton/skeleton.component';
-import { Subject, catchError, map, of, startWith, switchMap } from 'rxjs';
+import { Subject, catchError, forkJoin, map, of, startWith, switchMap } from 'rxjs';
 import {
   ChartSeriesKey,
   DailyFollowUpChartComponent,
@@ -21,10 +21,12 @@ import { DailyFollowUpQuery, DailyFollowUpRow } from '../data-access/daily-follo
 import { NovedadesCategorySummaryRepository } from '../data-access/novedades-category-summary.repository';
 import { NovedadesCategorySummary } from '../data-access/novedades-category-summary.models';
 
+import { OrdersRepository } from '../../orders/data-access/orders.repository';
+
 type DailyFollowUpViewState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'success'; data: DailyFollowUpRow[] };
+  | { status: 'success'; data: DailyFollowUpRow[]; totalGuiasActual: number };
 
 type NovedadesCategoryViewState =
   | { status: 'loading' }
@@ -170,7 +172,6 @@ function dateRangeValidator(): ValidatorFn {
         }
 
         @case ('success') {
-          @if (rows().length) {
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               @for (item of kpiCards(); track item.label) {
                 <ps-card padding="sm">
@@ -192,6 +193,7 @@ function dateRangeValidator(): ValidatorFn {
               }
             </div>
             
+          @if (rows().length) {
             <form class="ps-filter-bar" [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
               <div class="grid gap-4 lg:grid-cols-[220px_220px_max-content_max-content]">
                 <ps-input
@@ -416,6 +418,7 @@ export class DailyFollowUpSectionComponent {
   ];
 
   private readonly repository = inject(DailyFollowUpRepository);
+  private readonly ordersRepository = inject(OrdersRepository);
   private readonly novedadesRepository = inject(NovedadesCategorySummaryRepository);
   private readonly reload$ = new Subject<void>();
   private readonly filtersState = signal<DailyFollowUpQuery>({
@@ -435,9 +438,18 @@ export class DailyFollowUpSectionComponent {
     this.reload$.pipe(
       startWith(undefined),
       switchMap(() =>
-        this.repository.list(this.filtersState()).pipe(
-          //tap((data) => console.log('DailyFollowUp endpoint response:', data)),
-          map((data): DailyFollowUpViewState => ({ status: 'success', data })),
+        forkJoin({
+          history: this.repository.list(this.filtersState()),
+          current: this.ordersRepository.list({
+            page: 1, limit: 1, rangoFechaReporte: 'guias_mayor_a_2_dias',
+            ordenarPor: 'fechaReporte', direccion: 'asc',
+            estatus: '', busqueda: '', plataforma: '', idCategoriaNovedad: '',
+            transportadora: '', fechaReporteDesde: '', fechaReporteHasta: '',
+          }),
+        }).pipe(
+          map(({ history, current }): DailyFollowUpViewState => ({
+            status: 'success', data: history, totalGuiasActual: current.total,
+          })),
           startWith({ status: 'loading' } as DailyFollowUpViewState),
           catchError((error: unknown) => {
             console.error('Daily follow-up dashboard load failed', error);
@@ -523,25 +535,24 @@ export class DailyFollowUpSectionComponent {
   protected readonly kpiCards = computed<KpiCard[]>(() => {
     const rows = this.rows();
 
-    if (!rows.length) {
-      return [];
-    }
-
+    const state = this.viewState();
+    if (state.status !== 'success') return [];
+    const currentCard: KpiCard = {
+      label: 'Guía gen/pendi > 2 días',
+      value: this.formatInteger(state.totalGuiasActual),
+      caption: 'Conteo actual de Órdenes de seguimiento, sin filtros adicionales. Se actualiza al consultar.',
+      toneClass: 'bg-brand-100 text-brand-800',
+      badgeLabel: 'Actual',
+    };
+    if (!rows.length) return [currentCard];
     const latestRow = rows[rows.length - 1];
-    const totalGuiasMayorA2Dias = latestRow.totalGuiasMayorA2Dias;
     const totalEntre7y15 = latestRow.totalEntre7y15;
     const totalEntre15y20 = latestRow.totalEntre15y20;
     const totalMayorA20 = latestRow.totalMayorA20;
     const sumaOrdenesTotales = latestRow.totalAcumulado;
 
     return [
-      {
-        label: 'Guía gen/pendi > 2 días',
-        value: this.formatInteger(totalGuiasMayorA2Dias),
-        caption: 'Sumatoria acumulada del período analizado.',
-        toneClass: 'bg-brand-100 text-brand-800',
-        badgeLabel: 'Acumulado',
-      },
+      currentCard,
       {
         label: '7 a 15 días',
         value: this.formatInteger(totalEntre7y15),
@@ -564,9 +575,9 @@ export class DailyFollowUpSectionComponent {
         badgeLabel: 'Acumulado',
       },
       {
-        label: 'Suma de órdenes totales',
+        label: 'Total del último corte',
         value: this.formatInteger(sumaOrdenesTotales),
-        caption: 'Suma consolidada de órdenes del período analizado.',
+        caption: 'Suma de los rangos del último corte histórico; no incluye el conteo actual.',
         toneClass: 'bg-mint-100 text-mint-800',
         badgeLabel: 'Total',
       },

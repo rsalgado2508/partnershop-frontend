@@ -17,3 +17,17 @@ export function reportOpenDays(value: string | null, now = new Date()): number |
   const today = Date.UTC(part('year'), part('month') - 1, part('day'));
   return Math.max(0, Math.floor((today - date.getTime()) / 86400000));
 }
+
+export function formatReportDate(value: string | null): string {
+  const date = reportCalendarDate(value);
+  return date ? new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium', timeZone: 'UTC',
+  }).format(date) : '—';
+}
+
+export function formatColombiaDateTime(value: string | null): string {
+  const date = value ? new Date(value) : null;
+  return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Bogota',
+  }).format(date) : '—';
+}

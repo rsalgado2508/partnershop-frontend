@@ -1,3 +1,4 @@
+import { formatReportDate, formatColombiaDateTime } from '../data-access/order-report-date';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -658,23 +659,10 @@ export class CreateNovedadDrawerComponent {
   }
 
   protected formatDate(value: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    return new Intl.DateTimeFormat('es-CO', {
-      dateStyle: 'medium',
-    }).format(new Date(value));
+    return formatReportDate(value);
   }
 
   protected formatDateTime(value: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    return new Intl.DateTimeFormat('es-CO', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value));
+    return formatColombiaDateTime(value);
   }
 }

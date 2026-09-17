@@ -1,4 +1,4 @@
-import { reportCalendarDate, reportOpenDays } from '../data-access/order-report-date';
+import { formatReportDate, formatColombiaDateTime, reportOpenDays } from '../data-access/order-report-date';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -947,10 +947,7 @@ export class OrdersPageComponent {
   }
 
   protected formatDate(value: string | null): string {
-    const date = reportCalendarDate(value);
-    return date ? new Intl.DateTimeFormat('es-CO', {
-      dateStyle: 'medium', timeZone: 'UTC',
-    }).format(date) : '—';
+    return formatReportDate(value);
   }
 
   protected formatOpenDays(value: string | null): string {
@@ -959,14 +956,7 @@ export class OrdersPageComponent {
   }
 
   protected formatDateTime(value: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    return new Intl.DateTimeFormat('es-CO', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value));
+    return formatColombiaDateTime(value);
   }
 
   protected firstItemIndex(): number {

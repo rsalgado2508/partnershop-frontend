@@ -1,3 +1,4 @@
+import { reportCalendarDate, reportOpenDays } from '../data-access/order-report-date';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -946,37 +947,15 @@ export class OrdersPageComponent {
   }
 
   protected formatDate(value: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    return new Intl.DateTimeFormat('es-CO', {
-      dateStyle: 'medium',
-    }).format(new Date(value));
+    const date = reportCalendarDate(value);
+    return date ? new Intl.DateTimeFormat('es-CO', {
+      dateStyle: 'medium', timeZone: 'UTC',
+    }).format(date) : '—';
   }
 
   protected formatOpenDays(value: string | null): string {
-    if (!value) {
-      return '—';
-    }
-
-    const reportDate = new Date(value);
-
-    if (Number.isNaN(reportDate.getTime())) {
-      return '—';
-    }
-
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-    const reportDateStart = new Date(
-      reportDate.getFullYear(),
-      reportDate.getMonth(),
-      reportDate.getDate(),
-    ).getTime();
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-    const days = Math.max(0, Math.floor((todayStart - reportDateStart) / millisecondsPerDay));
-
-    return `${days} ${days === 1 ? 'día' : 'días'}`;
+    const days = reportOpenDays(value);
+    return days === null ? '—' : `${days} ${days === 1 ? 'día' : 'días'}`;
   }
 
   protected formatDateTime(value: string | null): string {
